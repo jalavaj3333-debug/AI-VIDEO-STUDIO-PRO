@@ -1,11 +1,13 @@
 
-import { FFmpeg } from
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
+import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
 
-import { fetchFile, toBlobURL } from
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
+import { fetchFile, toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
 
-// ELEMENTS
+// =====================================
+// AI VIDEO STUDIO PRO - VIDEO TRIMMER
+// =====================================
+
+// HTML ELEMENTS
 const input = document.getElementById("trimInput");
 const preview = document.getElementById("trimPreview");
 const fileName = document.getElementById("trimFileName");
@@ -21,6 +23,23 @@ const progressBar = document.getElementById("trimProgressBar");
 
 const downloadLink = document.getElementById("downloadTrim");
 
+// CHECK ELEMENTS
+if (
+    !input ||
+    !preview ||
+    !fileName ||
+    !startInput ||
+    !endInput ||
+    !loadButton ||
+    !exportButton ||
+    !status ||
+    !progressBar ||
+    !downloadLink
+) {
+    throw new Error("Video Trimmer HTML elements are missing.");
+}
+
+// VARIABLES
 let ffmpeg = null;
 let loaded = false;
 let selectedFile = null;
@@ -33,25 +52,58 @@ function setStatus(message) {
     status.textContent = message;
 }
 
-// LOAD VIDEO
+function setProgress(value) {
+    const percentage = Math.max(0, Math.min(100, value));
+    progressBar.style.width = percentage + "%";
+}
+
+// =====================================
+// SELECT VIDEO
+// =====================================
+
 input.addEventListener("change", () => {
 
-    const file = input.files[0];
+    const file = input.files?.[0];
 
     if (!file) return;
 
     if (!file.type.startsWith("video/")) {
-        setStatus("المرجو اختيار ملف فيديو.");
+        setStatus("المرجو اختيار ملف فيديو صالح.");
+        input.value = "";
         return;
     }
 
     selectedFile = file;
 
-    if (inputURL) URL.revokeObjectURL(inputURL);
-    if (outputURL) URL.revokeObjectURL(outputURL);
+    if (inputURL) {
+        URL.revokeObjectURL(inputURL);
+    }
+
+    if (outputURL) {
+        URL.revokeObjectURL(outputURL);
+        outputURL = null;
+    }
 
     inputURL = URL.createObjectURL(file);
-    outputURL = null;
+
+    preview.onloadedmetadata = () => {
+
+        startInput.value = "0";
+
+        endInput.value = preview.duration.toFixed(1);
+
+        endInput.max = preview.duration;
+
+        setStatus(
+            "مدة الفيديو: " +
+            preview.duration.toFixed(2) +
+            " ثانية"
+        );
+    };
+
+    preview.onerror = () => {
+        setStatus("تعذر فتح الفيديو للمعاينة.");
+    };
 
     preview.src = inputURL;
 
@@ -59,23 +111,14 @@ input.addEventListener("change", () => {
 
     downloadLink.hidden = true;
 
-    preview.onloadedmetadata = () => {
-        startInput.value = 0;
-        endInput.value = preview.duration.toFixed(1);
-
-        endInput.max = preview.duration;
-
-        setStatus(
-            "مدة الفيديو: " + preview.duration.toFixed(2) + " ثانية"
-        );
-    };
-
-    if (loaded) exportButton.disabled = false;
+    exportButton.disabled = !loaded;
 
 });
 
+// =====================================
 // LOAD FFMPEG ENGINE
-console.log("FFMPEG EDITOR FILE LOADED");
+// =====================================
+
 loadButton.addEventListener("click", async () => {
 
     if (loaded || processing) return;
@@ -84,74 +127,77 @@ loadButton.addEventListener("click", async () => {
 
         loadButton.disabled = true;
 
-        setStatus("جاري تحميل محرك FFmpeg...");
+        setStatus("جاري تجهيز محرك المونتاج...");
 
-        progressBar.style.width = "5%";
+        setProgress(5);
+
+        console.log("STEP 1: Creating FFmpeg");
 
         ffmpeg = new FFmpeg();
-        console.log("STEP 1: FFmpeg created");
+
         ffmpeg.on("log", ({ message }) => {
             console.log("[FFmpeg]", message);
         });
 
         ffmpeg.on("progress", ({ progress }) => {
 
-            const percentage = Math.max(
-                0,
-                Math.min(100, Math.round(progress * 100))
-            );
+            const percentage = Math.round(progress * 100);
 
-            progressBar.style.width = percentage + "%";
+            setProgress(percentage);
 
         });
 
-       
+        // FFmpeg CORE
+        const coreBaseURL =
+            "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
 
-const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+        // FFmpeg ESM WORKER
+        const workerURL =
+            "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/worker.js";
 
-const ffmpegURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm";
+        console.log("STEP 2: Preparing Worker");
 
-console.log("STEP 2: Starting FFmpeg load");
+        setStatus("جاري تجهيز Worker...");
 
-// تحميل Worker
-const classWorkerURL = await toBlobURL(
-    `${ffmpegURL}/worker.js`,
-    "text/javascript"
-);
+        const classWorkerURL = await toBlobURL(
+            workerURL,
+            "text/javascript"
+        );
 
-// تحميل المحرك
-await ffmpeg.load({
-    classWorkerURL: classWorkerURL,
+        setProgress(25);
 
-    coreURL: await toBlobURL(
-        `${baseURL}/ffmpeg-core.js`,
-        "text/javascript"
-    ),
+        console.log("STEP 3: Preparing FFmpeg Core");
 
-    wasmURL: await toBlobURL(
-        `${baseURL}/ffmpeg-core.wasm`,
-        "application/wasm"
-    )
-});
+        setStatus("جاري تحميل ملفات المحرك...");
 
-console.log("STEP 3: FFmpeg loaded successfully");
+        const coreURL = await toBlobURL(
+            `${coreBaseURL}/ffmpeg-core.js`,
+            "text/javascript"
+        );
 
-loaded = true;
+        setProgress(45);
 
-progressBar.style.width = "100%";
+        const wasmURL = await toBlobURL(
+            `${coreBaseURL}/ffmpeg-core.wasm`,
+            "application/wasm"
+        );
 
-setStatus("✓ محرك المونتاج جاهز!");
+        setProgress(75);
 
-loadButton.textContent = "✓ المحرك جاهز";
+        console.log("STEP 4: Starting FFmpeg");
 
-exportButton.disabled = !selectedFile;
+        setStatus("جاري تشغيل محرك المونتاج...");
 
-      
+        await ffmpeg.load({
+            classWorkerURL,
+            coreURL,
+            wasmURL
+        });
 
-
+        // SUCCESS
         loaded = true;
 
-        progressBar.style.width = "100%";
+        setProgress(100);
 
         setStatus("✓ محرك المونتاج جاهز!");
 
@@ -159,26 +205,37 @@ exportButton.disabled = !selectedFile;
 
         exportButton.disabled = !selectedFile;
 
+        console.log("STEP 5: FFmpeg loaded successfully");
+
     } catch (error) {
 
-        console.error(error);
+        console.error("FFmpeg Loading Error:", error);
 
         setStatus(
-            "تعذر تحميل المحرك. تأكد من الإنترنت ثم أعد المحاولة."
+            "تعذر تحميل المحرك: " +
+            (error?.message || String(error))
         );
 
+        setProgress(0);
+
         loadButton.disabled = false;
+
+        loaded = false;
 
     }
 
 });
 
+// =====================================
 // EXPORT TRIMMED VIDEO
+// =====================================
+
 exportButton.addEventListener("click", async () => {
 
     if (!loaded || !selectedFile || processing) return;
 
     const start = Number(startInput.value);
+
     const end = Number(endInput.value);
 
     const duration = preview.duration;
@@ -201,24 +258,34 @@ exportButton.addEventListener("click", async () => {
         processing = true;
 
         exportButton.disabled = true;
+
         loadButton.disabled = true;
 
         downloadLink.hidden = true;
 
-        progressBar.style.width = "0%";
+        setProgress(0);
 
         setStatus("جاري تجهيز الفيديو...");
 
-        const extension =
-            selectedFile.name.split(".").pop().toLowerCase();
+        const extension = selectedFile.name
+            .split(".")
+            .pop()
+            .toLowerCase();
 
         const safeExtension = /^[a-z0-9]+$/.test(extension)
             ? extension
             : "mp4";
 
         const inputName = `source.${safeExtension}`;
+
         const outputName = "AI_VIDEO_FINAL.mp4";
 
+        // Remove old files if they exist
+        await ffmpeg.deleteFile(inputName).catch(() => {});
+
+        await ffmpeg.deleteFile(outputName).catch(() => {});
+
+        // Write input video
         await ffmpeg.writeFile(
             inputName,
             await fetchFile(selectedFile)
@@ -226,7 +293,7 @@ exportButton.addEventListener("click", async () => {
 
         setStatus("جاري قص الفيديو وتحويله إلى MP4...");
 
-        await ffmpeg.exec([
+        const result = await ffmpeg.exec([
             "-ss", String(start),
             "-i", inputName,
             "-t", String(end - start),
@@ -241,6 +308,10 @@ exportButton.addEventListener("click", async () => {
             outputName
         ]);
 
+        if (result !== 0) {
+            throw new Error("FFmpeg failed to export the video.");
+        }
+
         setStatus("جاري تجهيز ملف التحميل...");
 
         const data = await ffmpeg.readFile(outputName);
@@ -250,16 +321,19 @@ exportButton.addEventListener("click", async () => {
             { type: "video/mp4" }
         );
 
-        if (outputURL) URL.revokeObjectURL(outputURL);
+        if (outputURL) {
+            URL.revokeObjectURL(outputURL);
+        }
 
         outputURL = URL.createObjectURL(blob);
 
         downloadLink.href = outputURL;
-        downloadLink.hidden = false;
 
         downloadLink.download = "AI-VIDEO-TRIMMED.mp4";
 
-        progressBar.style.width = "100%";
+        downloadLink.hidden = false;
+
+        setProgress(100);
 
         setStatus(
             "✓ تم تصدير الفيديو بنجاح! الحجم: " +
@@ -269,10 +343,11 @@ exportButton.addEventListener("click", async () => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error("Video Export Error:", error);
 
         setStatus(
-            "وقع خطأ أثناء المعالجة. جرب فيديو أصغر أو صيغة أخرى."
+            "خطأ أثناء التصدير: " +
+            (error?.message || String(error))
         );
 
     } finally {
@@ -280,16 +355,31 @@ exportButton.addEventListener("click", async () => {
         processing = false;
 
         exportButton.disabled = !selectedFile || !loaded;
+
         loadButton.disabled = loaded;
 
     }
 
 });
 
-// CLEANUP ON PAGE EXIT
+// =====================================
+// CLEANUP
+// =====================================
+
 window.addEventListener("beforeunload", () => {
 
-    if (inputURL) URL.revokeObjectURL(inputURL);
-    if (outputURL) URL.revokeObjectURL(outputURL);
+    if (inputURL) {
+        URL.revokeObjectURL(inputURL);
+    }
+
+    if (outputURL) {
+        URL.revokeObjectURL(outputURL);
+    }
+
+    if (ffmpeg && loaded) {
+        ffmpeg.terminate();
+    }
 
 });
+
+console.log("AI VIDEO STUDIO PRO - FFMPEG EDITOR READY");
