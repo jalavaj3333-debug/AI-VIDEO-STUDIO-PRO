@@ -187,12 +187,16 @@ loadButton.addEventListener("click", async () => {
         console.log("STEP 4: Starting FFmpeg");
 
         setStatus("جاري تشغيل محرك المونتاج...");
+console.log("LOAD STARTED");
 
-        await ffmpeg.load({
-            classWorkerURL,
-            coreURL,
-            wasmURL
-        });
+await ffmpeg.load({
+    classWorkerURL,
+    coreURL,
+    wasmURL
+});
+
+console.log("LOAD FINISHED");
+        
 
         // SUCCESS
         loaded = true;
