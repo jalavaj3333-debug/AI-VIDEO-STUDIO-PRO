@@ -152,17 +152,16 @@ loadButton.addEventListener("click", async () => {
             "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
 
         // FFmpeg ESM WORKER
-        const workerURL =
-            "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/worker.js";
+       console.log("STEP 2: Preparing Local Worker");
 
-        console.log("STEP 2: Preparing Worker");
+setStatus("جاري تجهيز Worker المحلي...");
 
-        setStatus("جاري تجهيز Worker...");
+const classWorkerURL = new URL(
+    "./ffmpeg/worker.js",
+    window.location.href
+).href;
 
-        const classWorkerURL = await toBlobURL(
-            workerURL,
-            "text/javascript"
-        );
+console.log("LOCAL WORKER:", classWorkerURL);
 
         setProgress(25);
 
