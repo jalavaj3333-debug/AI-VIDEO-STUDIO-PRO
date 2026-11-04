@@ -199,7 +199,8 @@ console.log("LOAD FINISHED");
 
         // SUCCESS
         loaded = true;
-
+        window.videoFFmpeg = ffmpeg;
+        window.videoFFmpegLoaded = true;
         setProgress(100);
 
         setStatus("✓ محرك المونتاج جاهز!");
