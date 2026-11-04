@@ -106,18 +106,20 @@ loadButton.addEventListener("click", async () => {
         });
 
        
+
 const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
 
 const ffmpegURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm";
 
-// تحميل Worker من خلال Blob لتفادي مشكل Cross-Origin
+console.log("STEP 2: Starting FFmpeg load");
+
+// تحميل Worker
 const classWorkerURL = await toBlobURL(
     `${ffmpegURL}/worker.js`,
     "text/javascript"
 );
 
-// تحميل محرك FFmpeg
-   console.log("STEP 2: Starting FFmpeg load");     
+// تحميل المحرك
 await ffmpeg.load({
     classWorkerURL: classWorkerURL,
 
@@ -130,8 +132,21 @@ await ffmpeg.load({
         `${baseURL}/ffmpeg-core.wasm`,
         "application/wasm"
     )
-    console.log("STEP 3: FFmpeg loaded successfully");
 });
+
+console.log("STEP 3: FFmpeg loaded successfully");
+
+loaded = true;
+
+progressBar.style.width = "100%";
+
+setStatus("✓ محرك المونتاج جاهز!");
+
+loadButton.textContent = "✓ المحرك جاهز";
+
+exportButton.disabled = !selectedFile;
+
+      
 
 
         loaded = true;
