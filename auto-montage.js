@@ -6,12 +6,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusText = document.getElementById("autoMontageStatus");
     const downloadLink = document.getElementById("autoMontageDownload");
 
-    if (!startButton) {
-        console.warn("Smart Auto Montage button not found.");
-        return;
-    }
+    if (!startButton) return;
 
     let isProcessing = false;
+    let lastOutputURL = null;
 
     function updateStatus(message) {
         if (statusText) statusText.textContent = message;
@@ -24,28 +22,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function safeName(index) {
-        return `montage_clip_${String(index).padStart(3, "0")}.mp4`;
-    }
-
     function getExtension(file) {
-        const name = file.name || "";
-        const match = name.match(/\.([a-zA-Z0-9]+)$/);
+        const match = file.name.match(/\.([a-zA-Z0-9]+)$/);
         return match ? match[1].toLowerCase() : "mp4";
-    }
-
-    async function waitForFFmpeg() {
-
-        if (
-            window.videoFFmpeg &&
-            window.videoFFmpegLoaded
-        ) {
-            return window.videoFFmpeg;
-        }
-
-        throw new Error(
-            "محرك FFmpeg غير جاهز. حمّل المحرك أولاً من أداة قص الفيديو."
-        );
     }
 
     async function createMontage() {
@@ -59,24 +38,19 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const invalidClip = clips.find(clip =>
+        if (clips.some(clip =>
             !clip.file ||
-            !clip.file.type.startsWith("video/")
-        );
-
-        if (invalidClip) {
-            updateStatus("كاين ملف غير صالح داخل Timeline.");
-            return;
-        }
-
-        if (clips.some(clip => !clip.duration || clip.duration <= 0)) {
-            updateStatus("انتظر حتى يتم تحميل معلومات مدة جميع الفيديوهات.");
+            !clip.file.type.startsWith("video/") ||
+            !Number.isFinite(clip.duration) ||
+            clip.duration <= 0
+        )) {
+            updateStatus("تأكد من أن جميع المقاطع فيديو صالحة وأن مدتها معروفة.");
             return;
         }
 
         isProcessing = true;
         startButton.disabled = true;
-        startButton.textContent = "⏳ جاري إنشاء الفيديو...";
+        startButton.textContent = "⏳ جاري المونتاج...";
 
         updateProgress(0);
 
@@ -85,73 +59,75 @@ document.addEventListener("DOMContentLoaded", () => {
             downloadLink.removeAttribute("href");
         }
 
-        let ffmpeg;
-        let outputURL = null;
+        if (lastOutputURL) {
+            URL.revokeObjectURL(lastOutputURL);
+            lastOutputURL = null;
+        }
+
+        let ffmpeg = null;
+        let outputCreated = false;
         const inputNames = [];
         const outputName = "SMART_AUTO_MONTAGE.mp4";
 
         try {
 
-            updateStatus("المرحلة 1/4: تجهيز محرك المونتاج...");
+            // STEP 1: FFmpeg
+            updateStatus("1/5: تجهيز محرك المونتاج...");
 
-            ffmpeg = await waitForFFmpeg();
+            if (
+                !window.videoFFmpeg ||
+                !window.videoFFmpegLoaded
+            ) {
+                throw new Error(
+                    "FFmpeg غير جاهز. حمّلو أولاً من Video Trimmer."
+                );
+            }
+
+            ffmpeg = window.videoFFmpeg;
 
             const { fetchFile } = await import(
                 "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js"
             );
 
-            updateProgress(5);
-
-            // Clean old temporary files
-            const oldFiles = await ffmpeg.listDir("/");
-
-            for (const entry of oldFiles) {
-                if (
-                    entry.name.startsWith("montage_clip_") ||
-                    entry.name === "SMART_AUTO_MONTAGE.mp4"
-                ) {
-                    try {
-                        await ffmpeg.deleteFile(entry.name);
-                    } catch (error) {
-                        console.warn("Could not remove old file:", entry.name);
-                    }
-                }
-            }
-
-            // Write videos to FFmpeg memory
-            updateStatus("المرحلة 2/4: تحميل المقاطع...");
+            // STEP 2: Upload clips
+            updateStatus("2/5: تحميل المقاطع...");
 
             for (let i = 0; i < clips.length; i++) {
 
                 const clip = clips[i];
-                const extension = getExtension(clip.file);
-                const inputName =
-                    `montage_clip_${String(i + 1).padStart(3, "0")}.${extension}`;
+
+                const name =
+                    `transition_clip_${String(i + 1).padStart(3, "0")}.` +
+                    getExtension(clip.file);
 
                 const data = await fetchFile(clip.file);
 
-                await ffmpeg.writeFile(inputName, data);
+                await ffmpeg.writeFile(name, data);
 
-                inputNames.push(inputName);
+                inputNames.push(name);
 
                 updateProgress(
-                    5 + ((i + 1) / clips.length) * 35
+                    5 + ((i + 1) / clips.length) * 30
                 );
 
                 updateStatus(
-                    `تحميل المقطع ${i + 1} من ${clips.length}...`
+                    `تحميل الفيديو ${i + 1} من ${clips.length}...`
                 );
-
             }
 
-            // Build FFmpeg filter
-            updateStatus("المرحلة 3/4: تركيب الفيديوهات...");
+            // STEP 3: Prepare video filters
+            updateStatus("3/5: تجهيز الانتقالات السينمائية...");
 
-            const inputs = [];
+            const durations = clips.map(clip =>
+                Number(clip.duration.toFixed(3))
+            );
 
-            inputNames.forEach(name => {
-                inputs.push("-i", name);
-            });
+            const shortestDuration = Math.min(...durations);
+
+            const transitionDuration = Math.min(
+                0.8,
+                shortestDuration * 0.2
+            );
 
             const filters = [];
 
@@ -159,24 +135,65 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 filters.push(
                     `[${index}:v:0]` +
+                    `trim=duration=${durations[index]},` +
+                    `setpts=PTS-STARTPTS,` +
                     `scale=1280:720:force_original_aspect_ratio=decrease,` +
                     `pad=1280:720:(ow-iw)/2:(oh-ih)/2,` +
-                    `setsar=1,fps=30,format=yuv420p[v${index}]`
+                    `setsar=1,fps=30,format=yuv420p,` +
+                    `settb=AVTB[v${index}]`
                 );
 
             });
 
-            const videoLabels = clips
-                .map((clip, index) => `[v${index}]`)
-                .join("");
+            // STEP 4: Automatic fade transitions
+            let previousLabel = "v0";
+            let accumulatedDuration = durations[0];
 
-            filters.push(
-                `${videoLabels}concat=n=${clips.length}:v=1:a=0[outv]`
-            );
+            if (clips.length === 1) {
 
-            const args = [
+                filters.push("[v0]null[outv]");
+
+            } else {
+
+                for (let i = 1; i < clips.length; i++) {
+
+                    const offset = Math.max(
+                        0,
+                        accumulatedDuration - transitionDuration
+                    );
+
+                    const nextLabel =
+                        i === clips.length - 1
+                            ? "outv"
+                            : `transition${i}`;
+
+                    filters.push(
+                        `[${previousLabel}][v${i}]` +
+                        `xfade=transition=fade:` +
+                        `duration=${transitionDuration}:` +
+                        `offset=${offset}[${nextLabel}]`
+                    );
+
+                    previousLabel = nextLabel;
+
+                    accumulatedDuration +=
+                        durations[i] - transitionDuration;
+
+                }
+            }
+
+            // STEP 5: Export MP4
+            updateStatus("4/5: تركيب الفيديو والانتقالات...");
+
+            const inputArguments = [];
+
+            inputNames.forEach(name => {
+                inputArguments.push("-i", name);
+            });
+
+            const argumentsList = [
                 "-y",
-                ...inputs,
+                ...inputArguments,
                 "-filter_complex",
                 filters.join(";"),
                 "-map",
@@ -188,17 +205,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 "ultrafast",
                 "-crf",
                 "23",
+                "-pix_fmt",
+                "yuv420p",
                 "-movflags",
                 "+faststart",
                 outputName
             ];
 
-            await ffmpeg.exec(args);
+            await ffmpeg.exec(argumentsList);
 
-            updateProgress(85);
+            updateProgress(90);
 
-            // Export result
-            updateStatus("المرحلة 4/4: تجهيز الفيديو النهائي...");
+            updateStatus("5/5: تجهيز ملف MP4 النهائي...");
 
             const outputData = await ffmpeg.readFile(outputName);
 
@@ -207,20 +225,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 { type: "video/mp4" }
             );
 
-            outputURL = URL.createObjectURL(blob);
+            lastOutputURL = URL.createObjectURL(blob);
+            outputCreated = true;
 
             if (downloadLink) {
-
-                downloadLink.href = outputURL;
+                downloadLink.href = lastOutputURL;
                 downloadLink.download = outputName;
                 downloadLink.hidden = false;
-
             }
 
             updateProgress(100);
 
             updateStatus(
-                "تم إنشاء المونتاج بنجاح! اضغط على تحميل الفيديو."
+                "نجاح! تم إنشاء الفيديو مع الانتقالات السينمائية. حمّلو الآن."
             );
 
         } catch (error) {
@@ -230,7 +247,8 @@ document.addEventListener("DOMContentLoaded", () => {
             updateProgress(0);
 
             updateStatus(
-                "وقع خطأ: " + (error.message || "تعذر إنشاء الفيديو.")
+                "وقع خطأ أثناء المونتاج: " +
+                (error.message || "خطأ غير معروف")
             );
 
         } finally {
@@ -241,16 +259,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     try {
                         await ffmpeg.deleteFile(name);
                     } catch (error) {
-                        console.warn(error);
+                        console.warn("Cleanup:", error);
                     }
                 }
 
                 try {
                     await ffmpeg.deleteFile(outputName);
                 } catch (error) {
-                    console.warn(error);
+                    console.warn("Output cleanup:", error);
                 }
 
+            }
+
+            if (!outputCreated && downloadLink) {
+                downloadLink.hidden = true;
             }
 
             isProcessing = false;
@@ -258,11 +280,10 @@ document.addEventListener("DOMContentLoaded", () => {
             startButton.textContent = "✨ ابدأ المونتاج التلقائي";
 
         }
-
     }
 
     startButton.addEventListener("click", createMontage);
 
-    console.log("SMART AUTO MONTAGE READY!");
+    console.log("SMART AUTO MONTAGE WITH FADE TRANSITIONS READY!");
 
 });
