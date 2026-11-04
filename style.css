@@ -701,3 +701,25 @@ footer {
         font-size: 25px;
     }
 }
+<div class="timeline-editor">
+
+    <div class="timeline-header">
+        <h3>✂ Video Timeline</h3>
+        <span id="clipCounter">0 مقطع</span>
+    </div>
+
+    <div class="timeline-toolbar">
+        <button id="addMoreClips">＋ إضافة مقاطع</button>
+        <button id="clearTimeline">حذف الكل</button>
+    </div>
+
+    <div id="timelineTracks" class="timeline-tracks">
+        <p class="timeline-empty">أضف فيديوهات لبدء المونتاج.</p>
+    </div>
+
+    <div class="timeline-footer">
+        <span>المدة الإجمالية:</span>
+        <strong id="totalDuration">00:00</strong>
+    </div>
+
+</div>
