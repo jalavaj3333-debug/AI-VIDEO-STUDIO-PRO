@@ -5,6 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const progressBar = document.getElementById("autoMontageProgress");
     const statusText = document.getElementById("autoMontageStatus");
     const downloadLink = document.getElementById("autoMontageDownload");
+    const musicInput = document.getElementById("musicInput");
+    const musicVolume = document.getElementById("musicVolume");
 
     if (!startButton) return;
 
