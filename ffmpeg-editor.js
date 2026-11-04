@@ -149,7 +149,7 @@ loadButton.addEventListener("click", async () => {
 
         // FFmpeg CORE
         const coreBaseURL =
-            "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+            "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
 
         // FFmpeg ESM WORKER
        console.log("STEP 2: Preparing Local Worker");
