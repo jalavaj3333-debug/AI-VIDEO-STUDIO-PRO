@@ -1,130 +1,265 @@
 
-/* PROFESSIONAL VIDEO TRIMMER */
+import { FFmpeg } from
+    "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
 
-.trim-box {
-    background: #151515;
-    border: 1px solid rgba(216,173,85,.2);
-    border-radius: 16px;
-    padding: 25px;
+import { fetchFile, toBlobURL } from
+    "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
+
+// ELEMENTS
+const input = document.getElementById("trimInput");
+const preview = document.getElementById("trimPreview");
+const fileName = document.getElementById("trimFileName");
+
+const startInput = document.getElementById("trimStart");
+const endInput = document.getElementById("trimEnd");
+
+const loadButton = document.getElementById("loadFFmpeg");
+const exportButton = document.getElementById("exportTrim");
+
+const status = document.getElementById("trimStatus");
+const progressBar = document.getElementById("trimProgressBar");
+
+const downloadLink = document.getElementById("downloadTrim");
+
+let ffmpeg = null;
+let loaded = false;
+let selectedFile = null;
+let inputURL = null;
+let outputURL = null;
+let processing = false;
+
+// STATUS
+function setStatus(message) {
+    status.textContent = message;
 }
 
-.trim-upload {
-    padding: 20px;
-    border: 1px dashed #80652f;
-    border-radius: 12px;
-    text-align: center;
-}
+// LOAD VIDEO
+input.addEventListener("change", () => {
 
-.trim-upload h3 {
-    color: #f4d58a;
-    margin-bottom: 15px;
-}
+    const file = input.files[0];
 
-.trim-upload input {
-    max-width: 100%;
-    color: #ddd;
-}
+    if (!file) return;
 
-.trim-upload p,
-#trimStatus {
-    color: #999;
-    font-size: 12px;
-    margin-top: 12px;
-}
-
-.trim-preview {
-    margin-top: 20px;
-    background: #080808;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.trim-preview video {
-    display: block;
-    width: 100%;
-    max-height: 350px;
-}
-
-.trim-settings {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-top: 22px;
-}
-
-.trim-settings label {
-    display: block;
-    color: #d8ad55;
-    font-size: 12px;
-    margin-bottom: 8px;
-}
-
-.trim-settings input {
-    width: 100%;
-    padding: 12px;
-    background: #090909;
-    border: 1px solid #40331c;
-    border-radius: 8px;
-    color: white;
-    font-family: inherit;
-}
-
-.trim-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 22px;
-}
-
-.trim-actions button {
-    padding: 12px 18px;
-    border: 1px solid #b58b42;
-    border-radius: 8px;
-    background: #d8ad55;
-    color: #111;
-    font-weight: bold;
-    font-family: inherit;
-}
-
-.trim-actions button:disabled {
-    opacity: .4;
-    cursor: not-allowed;
-}
-
-.trim-progress {
-    height: 9px;
-    margin-top: 22px;
-    border-radius: 20px;
-    background: #292929;
-    overflow: hidden;
-}
-
-#trimProgressBar {
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg,#a7792e,#f4d58a);
-    transition: width .2s;
-}
-
-#downloadTrim {
-    display: inline-block;
-    margin-top: 20px;
-    color: #f4d58a;
-    padding: 12px 18px;
-    border: 1px solid #b58b42;
-    border-radius: 8px;
-}
-
-@media(max-width:600px) {
-    .trim-box {
-        padding: 15px;
+    if (!file.type.startsWith("video/")) {
+        setStatus("المرجو اختيار ملف فيديو.");
+        return;
     }
 
-    .trim-settings {
-        grid-template-columns: 1fr;
+    selectedFile = file;
+
+    if (inputURL) URL.revokeObjectURL(inputURL);
+    if (outputURL) URL.revokeObjectURL(outputURL);
+
+    inputURL = URL.createObjectURL(file);
+    outputURL = null;
+
+    preview.src = inputURL;
+
+    fileName.textContent = file.name;
+
+    downloadLink.hidden = true;
+
+    preview.onloadedmetadata = () => {
+        startInput.value = 0;
+        endInput.value = preview.duration.toFixed(1);
+
+        endInput.max = preview.duration;
+
+        setStatus(
+            "مدة الفيديو: " + preview.duration.toFixed(2) + " ثانية"
+        );
+    };
+
+    if (loaded) exportButton.disabled = false;
+
+});
+
+// LOAD FFMPEG ENGINE
+loadButton.addEventListener("click", async () => {
+
+    if (loaded || processing) return;
+
+    try {
+
+        loadButton.disabled = true;
+
+        setStatus("جاري تحميل محرك FFmpeg...");
+
+        progressBar.style.width = "5%";
+
+        ffmpeg = new FFmpeg();
+
+        ffmpeg.on("log", ({ message }) => {
+            console.log("[FFmpeg]", message);
+        });
+
+        ffmpeg.on("progress", ({ progress }) => {
+
+            const percentage = Math.max(
+                0,
+                Math.min(100, Math.round(progress * 100))
+            );
+
+            progressBar.style.width = percentage + "%";
+
+        });
+
+        const baseURL =
+            "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+
+        await ffmpeg.load({
+            coreURL: await toBlobURL(
+                `${baseURL}/ffmpeg-core.js`,
+                "text/javascript"
+            ),
+
+            wasmURL: await toBlobURL(
+                `${baseURL}/ffmpeg-core.wasm`,
+                "application/wasm"
+            )
+        });
+
+        loaded = true;
+
+        progressBar.style.width = "100%";
+
+        setStatus("✓ محرك المونتاج جاهز!");
+
+        loadButton.textContent = "✓ المحرك جاهز";
+
+        exportButton.disabled = !selectedFile;
+
+    } catch (error) {
+
+        console.error(error);
+
+        setStatus(
+            "تعذر تحميل المحرك. تأكد من الإنترنت ثم أعد المحاولة."
+        );
+
+        loadButton.disabled = false;
+
     }
 
-    .trim-actions button {
-        width: 100%;
+});
+
+// EXPORT TRIMMED VIDEO
+exportButton.addEventListener("click", async () => {
+
+    if (!loaded || !selectedFile || processing) return;
+
+    const start = Number(startInput.value);
+    const end = Number(endInput.value);
+
+    const duration = preview.duration;
+
+    if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        start < 0 ||
+        end <= start ||
+        end > duration
+    ) {
+
+        alert("تأكد من وقت البداية والنهاية.");
+
+        return;
     }
-}
+
+    try {
+
+        processing = true;
+
+        exportButton.disabled = true;
+        loadButton.disabled = true;
+
+        downloadLink.hidden = true;
+
+        progressBar.style.width = "0%";
+
+        setStatus("جاري تجهيز الفيديو...");
+
+        const extension =
+            selectedFile.name.split(".").pop().toLowerCase();
+
+        const safeExtension = /^[a-z0-9]+$/.test(extension)
+            ? extension
+            : "mp4";
+
+        const inputName = `source.${safeExtension}`;
+        const outputName = "AI_VIDEO_FINAL.mp4";
+
+        await ffmpeg.writeFile(
+            inputName,
+            await fetchFile(selectedFile)
+        );
+
+        setStatus("جاري قص الفيديو وتحويله إلى MP4...");
+
+        await ffmpeg.exec([
+            "-ss", String(start),
+            "-i", inputName,
+            "-t", String(end - start),
+            "-map", "0:v:0",
+            "-map", "0:a?",
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-crf", "23",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-movflags", "+faststart",
+            outputName
+        ]);
+
+        setStatus("جاري تجهيز ملف التحميل...");
+
+        const data = await ffmpeg.readFile(outputName);
+
+        const blob = new Blob(
+            [data],
+            { type: "video/mp4" }
+        );
+
+        if (outputURL) URL.revokeObjectURL(outputURL);
+
+        outputURL = URL.createObjectURL(blob);
+
+        downloadLink.href = outputURL;
+        downloadLink.hidden = false;
+
+        downloadLink.download = "AI-VIDEO-TRIMMED.mp4";
+
+        progressBar.style.width = "100%";
+
+        setStatus(
+            "✓ تم تصدير الفيديو بنجاح! الحجم: " +
+            (blob.size / 1024 / 1024).toFixed(2) +
+            " MB"
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        setStatus(
+            "وقع خطأ أثناء المعالجة. جرب فيديو أصغر أو صيغة أخرى."
+        );
+
+    } finally {
+
+        processing = false;
+
+        exportButton.disabled = !selectedFile || !loaded;
+        loadButton.disabled = loaded;
+
+    }
+
+});
+
+// CLEANUP ON PAGE EXIT
+window.addEventListener("beforeunload", () => {
+
+    if (inputURL) URL.revokeObjectURL(inputURL);
+    if (outputURL) URL.revokeObjectURL(outputURL);
+
+});
