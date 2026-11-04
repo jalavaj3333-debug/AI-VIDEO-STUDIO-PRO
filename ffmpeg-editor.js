@@ -117,6 +117,7 @@ const classWorkerURL = await toBlobURL(
 );
 
 // تحميل محرك FFmpeg
+   console.log("STEP 2: Starting FFmpeg load");     
 await ffmpeg.load({
     classWorkerURL: classWorkerURL,
 
@@ -129,6 +130,7 @@ await ffmpeg.load({
         `${baseURL}/ffmpeg-core.wasm`,
         "application/wasm"
     )
+    console.log("STEP 3: FFmpeg loaded successfully");
 });
 
 
