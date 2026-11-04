@@ -14,6 +14,8 @@
     --text: #f5f5f5;
     --muted: #929292;
     --border: rgba(216,173,85,0.16);
+    --success: #8dd8a4;
+    --danger: #ff7777;
 }
 
 * {
@@ -33,7 +35,7 @@ body {
     min-height: 100vh;
 }
 
-button, a {
+button, input, select, textarea, a {
     font-family: inherit;
 }
 
@@ -46,14 +48,23 @@ a {
     color: inherit;
 }
 
-/* MAIN LAYOUT */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* =====================================
+   MAIN LAYOUT
+===================================== */
 
 .app-container {
     display: flex;
     min-height: 100vh;
 }
 
-/* SIDEBAR */
+/* =====================================
+   SIDEBAR
+===================================== */
 
 .sidebar {
     width: 260px;
@@ -168,7 +179,9 @@ a {
     line-height: 1.8;
 }
 
-/* MAIN CONTENT */
+/* =====================================
+   MAIN CONTENT
+===================================== */
 
 .main-content {
     margin-right: 260px;
@@ -202,7 +215,7 @@ a {
 }
 
 .status {
-    color: #8dd8a4;
+    color: var(--success);
     font-size: 12px;
     background: rgba(70,180,100,0.09);
     padding: 9px 13px;
@@ -224,7 +237,9 @@ a {
     display: none;
 }
 
-/* HERO */
+/* =====================================
+   HERO
+===================================== */
 
 .hero {
     min-height: 330px;
@@ -326,7 +341,9 @@ a {
     50% { transform: translateY(-12px); }
 }
 
-/* SECTIONS */
+/* =====================================
+   SECTIONS
+===================================== */
 
 .section {
     margin-top: 45px;
@@ -350,7 +367,9 @@ a {
     margin-top: 5px;
 }
 
-/* TOOL CARDS */
+/* =====================================
+   TOOL CARDS
+===================================== */
 
 .tools-grid {
     display: grid;
@@ -431,7 +450,9 @@ a {
     color: #111;
 }
 
-/* WORKSPACE */
+/* =====================================
+   WORKSPACE
+===================================== */
 
 .workspace-box {
     display: grid;
@@ -547,7 +568,9 @@ a {
     font-size: 10px;
 }
 
-/* EMPTY PROJECTS */
+/* =====================================
+   EMPTY PROJECTS
+===================================== */
 
 .empty-projects {
     background: var(--card);
@@ -573,7 +596,356 @@ a {
     margin-top: 8px;
 }
 
-/* FOOTER */
+/* =====================================
+   TIMELINE EDITOR
+===================================== */
+
+.timeline-editor {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    padding: 22px;
+    margin-top: 25px;
+}
+
+.timeline-header,
+.timeline-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.timeline-header h3 {
+    color: var(--gold-light);
+    font-size: 16px;
+}
+
+.timeline-header span,
+.timeline-footer span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.timeline-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0;
+}
+
+.timeline-toolbar button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(216,173,85,0.08);
+    color: var(--gold-light);
+}
+
+.timeline-toolbar button:hover {
+    background: var(--gold);
+    color: #111;
+}
+
+.timeline-tracks {
+    min-height: 100px;
+    padding: 15px;
+    background: #0b0b0b;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    overflow-x: auto;
+}
+
+.timeline-empty {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    padding: 25px 10px;
+}
+
+.timeline-footer {
+    margin-top: 18px;
+}
+
+.timeline-footer strong {
+    color: var(--gold-light);
+}
+
+/* =====================================
+   VIDEO TRIMMER
+===================================== */
+
+.trim-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    padding: 25px;
+}
+
+.trim-upload {
+    padding: 18px;
+    border: 1px dashed rgba(216,173,85,0.4);
+    border-radius: 10px;
+    text-align: center;
+}
+
+.trim-upload h3 {
+    color: var(--gold-light);
+    font-size: 15px;
+    margin-bottom: 15px;
+}
+
+.trim-upload input {
+    max-width: 100%;
+    color: var(--muted);
+}
+
+.trim-upload p {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 12px;
+    overflow-wrap: anywhere;
+}
+
+.trim-preview {
+    background: #050505;
+    border-radius: 10px;
+    margin-top: 18px;
+    overflow: hidden;
+}
+
+.trim-preview video {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+}
+
+.trim-settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.trim-settings label {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.trim-settings input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #0b0b0b;
+    color: var(--text);
+    outline: none;
+}
+
+.trim-settings input:focus {
+    border-color: var(--gold);
+}
+
+.trim-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.trim-actions button {
+    padding: 12px 20px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(216,173,85,0.10);
+    color: var(--gold-light);
+}
+
+.trim-actions button:hover:not(:disabled) {
+    background: var(--gold);
+    color: #111;
+}
+
+.trim-progress {
+    height: 10px;
+    background: #292929;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 22px;
+}
+
+#trimProgressBar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #b88636, #f4d58a);
+    transition: width 0.3s;
+}
+
+#trimStatus {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 13px;
+}
+
+#downloadTrim {
+    display: inline-block;
+    margin-top: 15px;
+    color: var(--gold-light);
+    font-weight: bold;
+}
+
+#downloadTrim[hidden] {
+    display: none;
+}
+
+/* =====================================
+   AUDIO STUDIO PRO
+===================================== */
+
+.audio-studio-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.audio-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    padding: 22px;
+    transition: 0.3s;
+    min-width: 0;
+}
+
+.audio-card:hover {
+    border-color: rgba(216,173,85,0.5);
+    transform: translateY(-3px);
+}
+
+.audio-card h3 {
+    color: var(--gold-light);
+    font-size: 16px;
+    margin-bottom: 18px;
+}
+
+.audio-card p {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 12px 0;
+    overflow-wrap: anywhere;
+}
+
+.audio-card input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    color: var(--muted);
+    font-size: 11px;
+    margin: 12px 0;
+}
+
+.audio-card input[type="range"] {
+    width: 100%;
+    accent-color: var(--gold);
+    margin: 12px 0;
+    cursor: pointer;
+}
+
+.audio-card label {
+    display: block;
+    font-size: 12px;
+    color: var(--text);
+    margin-top: 15px;
+}
+
+.audio-card .audio-check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.audio-preview-video {
+    width: 100%;
+    max-height: 200px;
+    background: #000;
+    border-radius: 10px;
+    margin-top: 12px;
+}
+
+.audio-card audio {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 12px;
+    height: 40px;
+}
+
+.audio-export-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 22px;
+}
+
+.audio-export-box button {
+    background: linear-gradient(135deg, #f4d58a, #b88636);
+    color: #111;
+    border: none;
+    border-radius: 9px;
+    padding: 13px 22px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.audio-export-box button:hover {
+    filter: brightness(1.1);
+}
+
+.audio-export-box button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.audio-progress {
+    width: 100%;
+    height: 10px;
+    background: #292929;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 22px;
+}
+
+#audioProgressBar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #b88636, #f4d58a);
+    transition: width 0.3s;
+}
+
+#audioStatus {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 15px;
+}
+
+#audioDownload {
+    display: inline-block;
+    color: var(--gold-light);
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+#audioDownload[hidden] {
+    display: none;
+}
+
+/* =====================================
+   FOOTER
+===================================== */
 
 footer {
     border-top: 1px solid var(--border);
@@ -587,22 +959,29 @@ footer {
     letter-spacing: 1px;
 }
 
-/* RESPONSIVE TABLET */
+/* =====================================
+   RESPONSIVE TABLET
+===================================== */
 
 @media (max-width: 1100px) {
     .tools-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .main-content {
         padding: 25px;
     }
+
+    .audio-studio-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
-/* RESPONSIVE MOBILE */
+/* =====================================
+   RESPONSIVE MOBILE
+===================================== */
 
 @media (max-width: 768px) {
-
     .sidebar {
         transform: translateX(100%);
         transition: 0.3s;
@@ -664,7 +1043,7 @@ footer {
     }
 
     .tools-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
 
@@ -684,13 +1063,27 @@ footer {
         grid-template-columns: 1fr;
     }
 
+    .audio-studio-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trim-settings {
+        grid-template-columns: 1fr;
+    }
+
+    .trim-box {
+        padding: 16px;
+    }
+
     footer {
         flex-direction: column;
         text-align: center;
     }
 }
 
-/* SMALL PHONES */
+/* =====================================
+   SMALL PHONES
+===================================== */
 
 @media (max-width: 380px) {
     .tools-grid {
@@ -700,83 +1093,18 @@ footer {
     .hero h1 {
         font-size: 25px;
     }
+
+    .main-content {
+        padding: 13px;
+    }
+
+    .timeline-editor,
+    .audio-card,
+    .audio-export-box {
+        padding: 15px;
+    }
+
+    .trim-actions button {
+        width: 100%;
+    }
 }
-<div class="timeline-editor">
-
-    <div class="timeline-header">
-        <h3>✂ Video Timeline</h3>
-        <span id="clipCounter">0 مقطع</span>
-    </div>
-
-    <div class="timeline-toolbar">
-        <button id="addMoreClips">＋ إضافة مقاطع</button>
-        <button id="clearTimeline">حذف الكل</button>
-    </div>
-
-    <div id="timelineTracks" class="timeline-tracks">
-        <p class="timeline-empty">أضف فيديوهات لبدء المونتاج.</p>
-    </div>
-
-    <div class="timeline-footer">
-        <span>المدة الإجمالية:</span>
-        <strong id="totalDuration">00:00</strong>
-    </div>
-
-</div>
-
-<!-- PROFESSIONAL VIDEO TRIMMER -->
-<section class="section" id="trim-editor">
-
-    <div class="section-heading">
-        <div>
-            <h2>✂ Professional Video Trimmer</h2>
-            <p>قص الفيديو وتصدير النتيجة بصيغة MP4.</p>
-        </div>
-    </div>
-
-    <div class="trim-box">
-
-        <div class="trim-upload">
-            <h3>📁 اختيار الفيديو</h3>
-            <input type="file" id="trimInput" accept="video/*">
-            <p id="trimFileName">لم يتم اختيار فيديو</p>
-        </div>
-
-        <div class="trim-preview">
-            <video id="trimPreview" controls playsinline></video>
-        </div>
-
-        <div class="trim-settings">
-
-            <div>
-                <label for="trimStart">وقت البداية (بالثواني)</label>
-                <input type="number" id="trimStart"
-                       min="0" step="0.1" value="0">
-            </div>
-
-            <div>
-                <label for="trimEnd">وقت النهاية (بالثواني)</label>
-                <input type="number" id="trimEnd"
-                       min="0" step="0.1" value="10">
-            </div>
-
-        </div>
-
-        <div class="trim-actions">
-            <button id="loadFFmpeg">تحميل محرك المونتاج</button>
-            <button id="exportTrim" disabled>✂ قص وتصدير MP4</button>
-        </div>
-
-        <div class="trim-progress">
-            <div id="trimProgressBar"></div>
-        </div>
-
-        <p id="trimStatus">المحرك لم يتم تحميله بعد.</p>
-
-        <a id="downloadTrim" hidden download="AI-VIDEO-TRIMMED.mp4">
-            ⬇ تحميل الفيديو النهائي
-        </a>
-
-    </div>
-
-</section>
