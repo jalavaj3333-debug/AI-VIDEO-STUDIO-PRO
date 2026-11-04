@@ -88,7 +88,7 @@ loadButton.addEventListener("click", async () => {
         progressBar.style.width = "5%";
 
         ffmpeg = new FFmpeg();
-
+        console.log("STEP 1: FFmpeg created");
         ffmpeg.on("log", ({ message }) => {
             console.log("[FFmpeg]", message);
         });
