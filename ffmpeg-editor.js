@@ -75,6 +75,7 @@ input.addEventListener("change", () => {
 });
 
 // LOAD FFMPEG ENGINE
+console.log("FFMPEG EDITOR FILE LOADED");
 loadButton.addEventListener("click", async () => {
 
     if (loaded || processing) return;
