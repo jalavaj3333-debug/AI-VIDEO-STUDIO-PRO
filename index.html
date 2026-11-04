@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#090909">
-
     <title>AI Video Studio Pro</title>
 
     <link rel="stylesheet" href="style.css">
@@ -32,35 +31,13 @@
         <div class="menu-title">القائمة الرئيسية</div>
 
         <nav class="menu">
-
-            <a href="#" class="menu-item active">
-                <span>⌂</span> الرئيسية
-            </a>
-
-            <a href="#create" class="menu-item">
-                <span>✦</span> إنشاء فيديو
-            </a>
-
-            <a href="#editor" class="menu-item">
-                <span>✂</span> مونتاج الفيديو
-            </a>
-
-            <a href="#trim-editor" class="menu-item">
-                <span>◧</span> قص الفيديو
-            </a>
-
-            <a href="#mergeStudio" class="menu-item">
-                <span>🎬</span> دمج الفيديوهات
-            </a>
-
-            <a href="#audio" class="menu-item">
-                <span>♫</span> Audio Studio Pro
-            </a>
-
-            <a href="#projects" class="menu-item">
-                <span>▤</span> مشاريعي
-            </a>
-
+            <a href="#" class="menu-item active"><span>⌂</span> الرئيسية</a>
+            <a href="#create" class="menu-item"><span>✦</span> إنشاء فيديو</a>
+            <a href="#editor" class="menu-item"><span>✂</span> مونتاج الفيديو</a>
+            <a href="#trim-editor" class="menu-item"><span>◧</span> قص الفيديو</a>
+            <a href="#mergeStudio" class="menu-item"><span>🎬</span> دمج الفيديوهات</a>
+            <a href="#audio" class="menu-item"><span>♫</span> Audio Studio Pro</a>
+            <a href="#projects" class="menu-item"><span>▤</span> مشاريعي</a>
         </nav>
 
         <div class="sidebar-bottom">
@@ -78,7 +55,6 @@
 
         <!-- TOPBAR -->
         <header class="topbar">
-
             <button class="mobile-menu" id="menuToggle">☰</button>
 
             <div class="welcome">
@@ -90,14 +66,11 @@
                 <span class="status">● النظام جاهز</span>
                 <div class="avatar">AI</div>
             </div>
-
         </header>
 
         <!-- HERO -->
         <section class="hero">
-
             <div class="hero-content">
-
                 <span class="hero-label">✦ YOUR CREATIVE AI STUDIO</span>
 
                 <h1>
@@ -110,22 +83,17 @@
                     والصوت باستعمال أدوات الذكاء الاصطناعي.
                 </p>
 
-                <a href="#create" class="primary-btn">
-                    ابدأ مشروعك الآن ✦
-                </a>
-
+                <a href="#create" class="primary-btn">ابدأ مشروعك الآن ✦</a>
             </div>
 
             <div class="hero-visual">
                 <div class="visual-circle">▶</div>
                 <div class="visual-text">AI VIDEO GENERATION</div>
             </div>
-
         </section>
 
         <!-- CREATE VIDEO -->
         <section class="section" id="create">
-
             <div class="section-heading">
                 <div>
                     <h2>إنشاء فيديو جديد</h2>
@@ -153,7 +121,7 @@
                     <div class="tool-icon orange">✂</div>
                     <h3>مونتاج تلقائي</h3>
                     <p>نظّم المقاطع وأضف النصوص والانتقالات.</p>
-                    <button class="tool-btn" data-tool="editor">ابدأ الآن</button>
+                    <a href="#smart-montage" class="tool-btn">ابدأ الآن</a>
                 </div>
 
                 <div class="tool-card">
@@ -164,7 +132,6 @@
                 </div>
 
             </div>
-
         </section>
 
         <!-- VIDEO WORKSPACE -->
@@ -180,16 +147,11 @@
             <div class="workspace-box">
 
                 <div class="upload-area" id="uploadArea">
-
                     <div class="upload-icon">⬆</div>
-
                     <h3>أضف ملفاتك إلى المشروع</h3>
-
                     <p>اختار الفيديوهات أو الصور من جهازك.</p>
 
-                    <label for="mediaInput" class="upload-btn">
-                        اختيار الملفات
-                    </label>
+                    <label for="mediaInput" class="upload-btn">اختيار الملفات</label>
 
                     <input
                         type="file"
@@ -200,11 +162,9 @@
                     >
 
                     <div id="fileList" class="file-list"></div>
-
                 </div>
 
                 <div class="preview-area">
-
                     <div class="preview-screen" id="previewScreen">
                         <span class="play-icon">▶</span>
                         <p>معاينة الفيديو</p>
@@ -214,7 +174,6 @@
                         <button id="playBtn">▶ تشغيل</button>
                         <span id="mediaInfo">لا يوجد ملف محدد</span>
                     </div>
-
                 </div>
 
                 <!-- VIDEO TIMELINE -->
@@ -241,8 +200,39 @@
 
                 </div>
 
-            </div>
+                <!-- SMART AUTO MONTAGE -->
+                <div class="auto-montage-box" id="smart-montage">
 
+                    <div class="auto-montage-info">
+                        <span class="auto-montage-icon">✦</span>
+                        <div>
+                            <h3>SMART AUTO MONTAGE</h3>
+                            <p>ركّب المقاطع ديالك تلقائياً في فيديو واحد.</p>
+                        </div>
+                    </div>
+
+                    <button id="smartAutoMontage" type="button">
+                        ✨ ابدأ المونتاج التلقائي
+                    </button>
+
+                    <div class="auto-montage-progress">
+                        <div id="autoMontageProgress"></div>
+                    </div>
+
+                    <p id="autoMontageStatus">
+                        أضف الفيديوهات إلى Timeline ثم اضغط على الزر.
+                    </p>
+
+                    <a
+                        id="autoMontageDownload"
+                        hidden
+                        download="SMART-AUTO-MONTAGE.mp4">
+                        ⬇ تحميل الفيديو النهائي
+                    </a>
+
+                </div>
+
+            </div>
         </section>
 
         <!-- VIDEO TRIMMER -->
@@ -256,7 +246,6 @@
             </div>
 
             <div class="trim-box">
-
                 <div class="trim-upload">
                     <h3>📁 اختيار الفيديو</h3>
                     <input type="file" id="trimInput" accept="video/*">
@@ -268,7 +257,6 @@
                 </div>
 
                 <div class="trim-settings">
-
                     <div>
                         <label for="trimStart">وقت البداية (بالثواني)</label>
                         <input type="number" id="trimStart" min="0" step="0.1" value="0">
@@ -278,7 +266,6 @@
                         <label for="trimEnd">وقت النهاية (بالثواني)</label>
                         <input type="number" id="trimEnd" min="0" step="0.1" value="10">
                     </div>
-
                 </div>
 
                 <div class="trim-actions">
@@ -295,9 +282,7 @@
                 <a id="downloadTrim" hidden download="AI-VIDEO-TRIMMED.mp4">
                     ⬇ تحميل الفيديو النهائي
                 </a>
-
             </div>
-
         </section>
 
         <!-- VIDEO MERGE STUDIO -->
@@ -311,31 +296,23 @@
             </div>
 
             <div class="trim-box merge-box">
-
                 <h3>📁 اختيار الفيديوهات</h3>
-
                 <p>اختار جوج فيديوهات أو أكثر من جهازك باش تجمعهم في فيديو واحد.</p>
 
                 <input type="file" id="mergeInput" accept="video/*" multiple>
 
-                <div id="mergeStatus" class="trim-status">
-                    لم يتم اختيار أي فيديو
-                </div>
+                <div id="mergeStatus" class="trim-status">لم يتم اختيار أي فيديو</div>
 
                 <div class="trim-progress">
                     <div id="mergeProgress"></div>
                 </div>
 
-                <button id="mergeButton" type="button">
-                    🎬 دمج الفيديوهات
-                </button>
+                <button id="mergeButton" type="button">🎬 دمج الفيديوهات</button>
 
                 <a id="mergeDownload" hidden download="AI-STUDIO-MERGED.mp4">
                     ⬇ تحميل الفيديو النهائي
                 </a>
-
             </div>
-
         </section>
 
         <!-- AUDIO STUDIO PRO -->
@@ -350,20 +327,11 @@
 
             <div class="audio-studio-grid">
 
-                <!-- VIDEO -->
                 <div class="audio-card">
-
                     <h3>🎬 الفيديو الأصلي</h3>
-
                     <input type="file" id="audioVideoInput" accept="video/*">
 
-                    <video
-                        id="audioVideoPreview"
-                        controls
-                        playsinline
-                        hidden
-                        class="audio-preview-video">
-                    </video>
+                    <video id="audioVideoPreview" controls playsinline hidden class="audio-preview-video"></video>
 
                     <p id="audioVideoName">لم يتم اختيار فيديو</p>
 
@@ -373,25 +341,12 @@
                     </label>
 
                     <label for="originalVolume">مستوى صوت الفيديو الأصلي</label>
-
-                    <input
-                        type="range"
-                        id="originalVolume"
-                        min="0"
-                        max="2"
-                        step="0.05"
-                        value="1"
-                    >
-
+                    <input type="range" id="originalVolume" min="0" max="2" step="0.05" value="1">
                     <span id="originalVolumeValue">100%</span>
-
                 </div>
 
-                <!-- MUSIC -->
                 <div class="audio-card">
-
                     <h3>🎼 الموسيقى الخلفية</h3>
-
                     <input type="file" id="musicInput" accept="audio/*">
 
                     <audio id="musicPreview" controls hidden></audio>
@@ -399,25 +354,12 @@
                     <p id="musicName">لم يتم اختيار موسيقى</p>
 
                     <label for="musicVolume">مستوى الموسيقى</label>
-
-                    <input
-                        type="range"
-                        id="musicVolume"
-                        min="0"
-                        max="2"
-                        step="0.05"
-                        value="0.25"
-                    >
-
+                    <input type="range" id="musicVolume" min="0" max="2" step="0.05" value="0.25">
                     <span id="musicVolumeValue">25%</span>
-
                 </div>
 
-                <!-- VOICE -->
                 <div class="audio-card">
-
                     <h3>🎙️ التعليق الصوتي</h3>
-
                     <input type="file" id="voiceInput" accept="audio/*">
 
                     <audio id="voicePreview" controls hidden></audio>
@@ -425,27 +367,14 @@
                     <p id="voiceName">التعليق الصوتي اختياري</p>
 
                     <label for="voiceVolume">مستوى التعليق الصوتي</label>
-
-                    <input
-                        type="range"
-                        id="voiceVolume"
-                        min="0"
-                        max="2"
-                        step="0.05"
-                        value="1"
-                    >
-
+                    <input type="range" id="voiceVolume" min="0" max="2" step="0.05" value="1">
                     <span id="voiceVolumeValue">100%</span>
-
                 </div>
 
             </div>
 
             <div class="audio-export-box">
-
-                <button id="exportAudioMix" type="button">
-                    🎬 إنشاء الفيديو بالصوت الجديد
-                </button>
+                <button id="exportAudioMix" type="button">🎬 إنشاء الفيديو بالصوت الجديد</button>
 
                 <div class="audio-progress">
                     <div id="audioProgressBar"></div>
@@ -453,20 +382,14 @@
 
                 <p id="audioStatus">اختار الفيديو والموسيقى للبدء.</p>
 
-                <a
-                    id="audioDownload"
-                    hidden
-                    download="AI-STUDIO-AUDIO.mp4">
+                <a id="audioDownload" hidden download="AI-STUDIO-AUDIO.mp4">
                     ⬇ تحميل الفيديو النهائي
                 </a>
-
             </div>
-
         </section>
 
         <!-- PROJECTS -->
         <section class="section" id="projects">
-
             <div class="section-heading">
                 <div>
                     <h2>مشاريعي الأخيرة</h2>
@@ -479,7 +402,6 @@
                 <h3>مازال ما عندك حتى مشروع</h3>
                 <p>بدا أول مشروع ديالك وغادي يظهر هنا.</p>
             </div>
-
         </section>
 
         <!-- FOOTER -->
@@ -489,7 +411,6 @@
         </footer>
 
     </main>
-
 </div>
 
 <!-- JAVASCRIPT FILES -->
@@ -497,6 +418,7 @@
 <script type="module" src="ffmpeg-editor.js"></script>
 <script type="module" src="merge-editor.js"></script>
 <script src="audio-editor.js"></script>
+<script src="auto-montage.js"></script>
 
 </body>
 </html>
