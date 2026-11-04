@@ -1,306 +1,466 @@
 
-/* =====================================
-   AI VIDEO STUDIO PRO
-   JAVASCRIPT ENGINE
-===================================== */
-
 document.addEventListener("DOMContentLoaded", () => {
 
-    // ELEMENTS
     const sidebar = document.querySelector(".sidebar");
     const menuToggle = document.getElementById("menuToggle");
 
     const mediaInput = document.getElementById("mediaInput");
-    const uploadArea = document.getElementById("uploadArea");
-
     const previewScreen = document.getElementById("previewScreen");
     const fileList = document.getElementById("fileList");
-
     const mediaInfo = document.getElementById("mediaInfo");
     const playBtn = document.getElementById("playBtn");
 
-    let selectedFile = null;
-    let mediaElement = null;
-    let objectURL = null;
+    const timelineTracks = document.getElementById("timelineTracks");
+    const clipCounter = document.getElementById("clipCounter");
+    const totalDuration = document.getElementById("totalDuration");
+
+    let clips = [];
+    let selectedId = null;
+    let previewURL = null;
+    let previewVideo = null;
 
     // MOBILE MENU
-    if (menuToggle && sidebar) {
+    menuToggle?.addEventListener("click", () => {
+        sidebar?.classList.toggle("open");
+    });
 
-        menuToggle.addEventListener("click", () => {
-            sidebar.classList.toggle("open");
-        });
-
-    }
-
-    // CLOSE MENU AFTER CLICKING A LINK
     document.querySelectorAll(".menu-item").forEach(link => {
-
         link.addEventListener("click", () => {
-
-            document.querySelectorAll(".menu-item").forEach(item => {
-                item.classList.remove("active");
-            });
+            document.querySelectorAll(".menu-item").forEach(item =>
+                item.classList.remove("active")
+            );
 
             link.classList.add("active");
+            sidebar?.classList.remove("open");
+        });
+    });
 
-            if (window.innerWidth <= 768) {
-                sidebar.classList.remove("open");
+    // FILE UPLOAD
+    mediaInput?.addEventListener("change", event => {
+        addFiles(Array.from(event.target.files || []));
+        mediaInput.value = "";
+    });
+
+    document.getElementById("addMoreClips")
+        ?.addEventListener("click", () => mediaInput?.click());
+
+    function addFiles(files) {
+
+        const validFiles = files.filter(file =>
+            file.type.startsWith("video/") ||
+            file.type.startsWith("image/")
+        );
+
+        if (!validFiles.length) {
+            alert("اختار صورة أو فيديو صالح.");
+            return;
+        }
+
+        fileList.innerHTML = "";
+
+        validFiles.forEach(file => {
+
+            const item = document.createElement("div");
+            item.textContent = "✓ " + file.name;
+            fileList.appendChild(item);
+
+            if (file.type.startsWith("video/")) {
+
+                const clip = {
+                    id: crypto.randomUUID(),
+                    file: file,
+                    url: URL.createObjectURL(file),
+                    duration: 0
+                };
+
+                clips.push(clip);
+                readDuration(clip);
+
+            } else if (!clips.length) {
+
+                showImage(file);
+
             }
 
         });
 
-    });
+        if (clips.length && selectedId === null) {
+            selectClip(clips[0].id);
+        }
 
-    // FILE UPLOAD
-    if (mediaInput) {
+        renderTimeline();
+    }
 
-        mediaInput.addEventListener("change", event => {
+    // READ VIDEO DURATION
+    function readDuration(clip) {
 
-            const files = Array.from(event.target.files || []);
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.src = clip.url;
 
-            if (files.length === 0) return;
+        video.addEventListener("loadedmetadata", () => {
 
-            displayFiles(files);
+            clip.duration = Number.isFinite(video.duration)
+                ? video.duration
+                : 0;
 
-        });
+            renderTimeline();
+
+            video.removeAttribute("src");
+            video.load();
+
+        }, { once: true });
+
+        video.addEventListener("error", () => {
+            renderTimeline();
+        }, { once: true });
 
     }
 
-    // DISPLAY FILES
-    function displayFiles(files) {
+    // IMAGE PREVIEW
+    function showImage(file) {
 
-        fileList.innerHTML = "";
+        stopPreview();
 
-        const validFiles = files.filter(file => {
+        previewURL = URL.createObjectURL(file);
 
-            return file.type.startsWith("image/") ||
-                   file.type.startsWith("video/");
+        const img = document.createElement("img");
+        img.src = previewURL;
+        img.alt = "Image preview";
 
-        });
+        previewScreen.innerHTML = "";
+        previewScreen.appendChild(img);
 
-        if (validFiles.length === 0) {
-
-            fileList.textContent = "المرجو اختيار صور أو فيديوهات صالحة.";
-
-            return;
-        }
-
-        validFiles.forEach(file => {
-
-            const fileItem = document.createElement("div");
-
-            fileItem.textContent =
-                "✓ " + file.name + " (" + formatSize(file.size) + ")";
-
-            fileList.appendChild(fileItem);
-
-        });
-
-        // SELECT FIRST FILE FOR PREVIEW
-        selectMedia(validFiles[0]);
+        mediaInfo.textContent = file.name;
+        playBtn.textContent = "▧ صورة";
 
     }
 
-    // SELECT MEDIA
-    function selectMedia(file) {
+    // STOP CURRENT PREVIEW
+    function stopPreview() {
 
-        selectedFile = file;
-
-        // RELEASE OLD OBJECT URL
-        if (objectURL) {
-            URL.revokeObjectURL(objectURL);
+        if (previewVideo) {
+            previewVideo.pause();
+            previewVideo.onended = null;
+            previewVideo = null;
         }
 
-        objectURL = URL.createObjectURL(file);
+        if (previewURL) {
+            URL.revokeObjectURL(previewURL);
+            previewURL = null;
+        }
+
+    }
+
+    // SELECT CLIP
+    function selectClip(id, autoplay = false) {
+
+        const clip = clips.find(item => item.id === id);
+        if (!clip) return;
+
+        selectedId = id;
+
+        stopPreview();
 
         previewScreen.innerHTML = "";
 
-        if (file.type.startsWith("video/")) {
+        previewVideo = document.createElement("video");
+        previewVideo.src = clip.url;
+        previewVideo.controls = true;
+        previewVideo.preload = "metadata";
+        previewVideo.playsInline = true;
 
-            mediaElement = document.createElement("video");
+        previewScreen.appendChild(previewVideo);
 
-            mediaElement.src = objectURL;
-            mediaElement.controls = true;
-            mediaElement.preload = "metadata";
-            mediaElement.playsInline = true;
+        mediaInfo.textContent = clip.file.name;
+        playBtn.textContent = "▶ تشغيل";
 
-            previewScreen.appendChild(mediaElement);
+        previewVideo.addEventListener("ended", playNextClip);
 
-            playBtn.textContent = "▶ تشغيل";
-
-        } else if (file.type.startsWith("image/")) {
-
-            mediaElement = document.createElement("img");
-
-            mediaElement.src = objectURL;
-            mediaElement.alt = "معاينة الصورة";
-
-            previewScreen.appendChild(mediaElement);
-
-            playBtn.textContent = "▧ صورة";
-
+        if (autoplay) {
+            previewVideo.play().catch(() => {
+                playBtn.textContent = "▶ تشغيل";
+            });
         }
 
-        mediaInfo.textContent = file.name;
+        renderTimeline();
+
+    }
+
+    // PLAY NEXT CLIP
+    function playNextClip() {
+
+        const index = clips.findIndex(item => item.id === selectedId);
+
+        if (index >= 0 && index < clips.length - 1) {
+            selectClip(clips[index + 1].id, true);
+        } else {
+            playBtn.textContent = "▶ تشغيل";
+        }
 
     }
 
     // PLAY / PAUSE
-    if (playBtn) {
+    playBtn?.addEventListener("click", () => {
 
-        playBtn.addEventListener("click", () => {
+        if (!previewVideo) {
+            alert("اختار فيديو من Timeline أولاً.");
+            return;
+        }
 
-            if (!selectedFile || !mediaElement) {
+        if (previewVideo.paused) {
 
-                alert("اختار صورة أو فيديو أولاً.");
+            previewVideo.play().then(() => {
+                playBtn.textContent = "❚❚ إيقاف";
+            }).catch(() => {
+                alert("تعذر تشغيل الفيديو.");
+            });
 
-                return;
+        } else {
+
+            previewVideo.pause();
+            playBtn.textContent = "▶ تشغيل";
+
+        }
+
+    });
+
+    // TIMELINE RENDER
+    function renderTimeline() {
+
+        timelineTracks.innerHTML = "";
+
+        if (!clips.length) {
+
+            timelineTracks.innerHTML =
+                '<p class="timeline-empty">أضف فيديوهات لبدء المونتاج.</p>';
+
+        }
+
+        clips.forEach((clip, index) => {
+
+            const item = document.createElement("div");
+
+            item.className = "clip-item" +
+                (clip.id === selectedId ? " selected" : "");
+
+            const number = document.createElement("span");
+            number.className = "clip-number";
+            number.textContent = index + 1;
+
+            const details = document.createElement("div");
+            details.className = "clip-details";
+
+            const name = document.createElement("strong");
+            name.textContent = clip.file.name;
+
+            const duration = document.createElement("small");
+            duration.textContent =
+                "مدة الفيديو: " + formatTime(clip.duration);
+
+            details.append(name, duration);
+
+            const actions = document.createElement("div");
+            actions.className = "clip-actions";
+
+            actions.append(
+                makeButton("معاينة", "select", clip.id),
+                makeButton("↑", "up", clip.id),
+                makeButton("↓", "down", clip.id),
+                makeButton("حذف", "delete", clip.id)
+            );
+
+            item.append(number, details, actions);
+
+            item.addEventListener("click", event => {
+                if (!event.target.closest("button")) {
+                    selectClip(clip.id);
+                }
+            });
+
+            timelineTracks.appendChild(item);
+
+        });
+
+        clipCounter.textContent = clips.length + " مقطع";
+
+        const total = clips.reduce(
+            (sum, clip) => sum + clip.duration, 0
+        );
+
+        totalDuration.textContent = formatTime(total);
+
+    }
+
+    // CREATE ACTION BUTTON
+    function makeButton(label, action, id) {
+
+        const button = document.createElement("button");
+
+        button.textContent = label;
+        button.type = "button";
+
+        button.addEventListener("click", event => {
+
+            event.stopPropagation();
+
+            if (action === "select") {
+                selectClip(id);
             }
 
-            if (selectedFile.type.startsWith("image/")) {
-
-                alert("هاد الملف صورة، ماشي فيديو.");
-
-                return;
+            if (action === "up") {
+                moveClip(id, -1);
             }
 
-            if (mediaElement.paused) {
+            if (action === "down") {
+                moveClip(id, 1);
+            }
 
-                mediaElement.play().then(() => {
-
-                    playBtn.textContent = "❚❚ إيقاف";
-
-                }).catch(() => {
-
-                    alert("تعذر تشغيل الفيديو.");
-
-                });
-
-            } else {
-
-                mediaElement.pause();
-
-                playBtn.textContent = "▶ تشغيل";
-
+            if (action === "delete") {
+                deleteClip(id);
             }
 
         });
 
+        return button;
+
     }
 
-    // UPDATE PLAY BUTTON WHEN VIDEO ENDS
-    previewScreen.addEventListener("ended", () => {
+    // MOVE CLIP
+    function moveClip(id, direction) {
 
-        playBtn.textContent = "▶ تشغيل";
+        const index = clips.findIndex(item => item.id === id);
+        const newIndex = index + direction;
 
-    }, true);
-
-    // FILE SIZE FORMAT
-    function formatSize(bytes) {
-
-        if (bytes < 1024) {
-            return bytes + " B";
+        if (index < 0 || newIndex < 0 || newIndex >= clips.length) {
+            return;
         }
 
-        if (bytes < 1024 * 1024) {
-            return (bytes / 1024).toFixed(1) + " KB";
+        [clips[index], clips[newIndex]] =
+            [clips[newIndex], clips[index]];
+
+        renderTimeline();
+
+    }
+
+    // DELETE CLIP
+    function deleteClip(id) {
+
+        const index = clips.findIndex(item => item.id === id);
+        if (index < 0) return;
+
+        URL.revokeObjectURL(clips[index].url);
+
+        const wasSelected = selectedId === id;
+
+        clips.splice(index, 1);
+
+        if (wasSelected) {
+
+            stopPreview();
+            selectedId = null;
+
+            if (clips.length) {
+                selectClip(clips[Math.min(index, clips.length - 1)].id);
+            } else {
+                previewScreen.innerHTML =
+                    '<span class="play-icon">▶</span><p>معاينة الفيديو</p>';
+
+                mediaInfo.textContent = "لا يوجد ملف محدد";
+                playBtn.textContent = "▶ تشغيل";
+            }
+
         }
 
-        return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+        renderTimeline();
+
+    }
+
+    // CLEAR TIMELINE
+    document.getElementById("clearTimeline")
+        ?.addEventListener("click", () => {
+
+            if (!clips.length) return;
+
+            if (!confirm("واش متأكد بغيتي تحذف جميع المقاطع؟")) {
+                return;
+            }
+
+            stopPreview();
+
+            clips.forEach(clip => URL.revokeObjectURL(clip.url));
+
+            clips = [];
+            selectedId = null;
+
+            fileList.innerHTML = "";
+
+            previewScreen.innerHTML =
+                '<span class="play-icon">▶</span><p>معاينة الفيديو</p>';
+
+            mediaInfo.textContent = "لا يوجد ملف محدد";
+            playBtn.textContent = "▶ تشغيل";
+
+            renderTimeline();
+
+        });
+
+    // FORMAT TIME
+    function formatTime(seconds) {
+
+        if (!Number.isFinite(seconds)) return "00:00";
+
+        const minutes = Math.floor(seconds / 60);
+        const remaining = Math.floor(seconds % 60);
+
+        return String(minutes).padStart(2, "0") +
+            ":" + String(remaining).padStart(2, "0");
 
     }
 
     // DRAG AND DROP
-    if (uploadArea) {
+    const uploadArea = document.getElementById("uploadArea");
 
-        uploadArea.addEventListener("dragover", event => {
+    uploadArea?.addEventListener("dragover", event => {
+        event.preventDefault();
+        uploadArea.style.borderColor = "#f4d58a";
+    });
 
-            event.preventDefault();
+    uploadArea?.addEventListener("dragleave", () => {
+        uploadArea.style.borderColor = "";
+    });
 
-            uploadArea.style.borderColor = "#f4d58a";
+    uploadArea?.addEventListener("drop", event => {
+        event.preventDefault();
+        uploadArea.style.borderColor = "";
 
-        });
-
-        uploadArea.addEventListener("dragleave", () => {
-
-            uploadArea.style.borderColor = "";
-
-        });
-
-        uploadArea.addEventListener("drop", event => {
-
-            event.preventDefault();
-
-            uploadArea.style.borderColor = "";
-
-            const files = Array.from(event.dataTransfer.files || []);
-
-            if (files.length > 0) {
-                displayFiles(files);
-            }
-
-        });
-
-    }
+        addFiles(Array.from(event.dataTransfer.files || []));
+    });
 
     // TOOL BUTTONS
+    const toolMessages = {
+        text: "محرك تحويل النص إلى فيديو قيد التطوير.",
+        image: "محرك تحريك الصور قيد التطوير.",
+        editor: "استوديو المونتاج جاهز للتجربة.",
+        audio: "أدوات الصوت قيد التطوير.",
+        voice: "محرك التعليق الصوتي قيد التطوير.",
+        music: "أداة الموسيقى قيد التطوير."
+    };
+
     document.querySelectorAll(".tool-btn").forEach(button => {
 
         button.addEventListener("click", () => {
 
             const tool = button.dataset.tool;
 
-            openTool(tool);
+            alert(toolMessages[tool] || "الأداة قيد التطوير.");
 
         });
 
     });
 
-    // TOOL SYSTEM
-    function openTool(tool) {
+    renderTimeline();
 
-        const messages = {
-
-            text: "أداة تحويل النص إلى فيديو: سيتم تجهيز محرر السكريبت وربطه بخدمة توليد الفيديو.",
-
-            image: "أداة تحويل الصور إلى فيديو: سيتم تجهيز مساحة رفع الصور وتحريكها.",
-
-            editor: "استوديو المونتاج: سيتم تطوير أدوات القص والترتيب والانتقالات.",
-
-            audio: "استوديو الصوت: سيتم تجهيز أدوات الصوت والموسيقى.",
-
-            voice: "التعليق الصوتي: سيتم تجهيز أداة تحويل النص إلى صوت.",
-
-            music: "الموسيقى: سيتم تجهيز مساحة إضافة وإدارة الملفات الصوتية."
-
-        };
-
-        alert(messages[tool] || "الأداة قيد التطوير.");
-
-    }
-
-    // SMOOTH SCROLL
-    document.querySelectorAll('a[href^="#"]').forEach(link => {
-
-        link.addEventListener("click", event => {
-
-            const target = document.querySelector(link.getAttribute("href"));
-
-            if (target) {
-
-                event.preventDefault();
-
-                target.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-
-            }
-
-        });
-
-    });
-
-    console.log("AI VIDEO STUDIO PRO READY!");
+    console.log("AI VIDEO STUDIO PRO EDITOR READY!");
 
 });
