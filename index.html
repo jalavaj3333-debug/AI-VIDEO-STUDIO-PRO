@@ -32,6 +32,7 @@
         <div class="menu-title">القائمة الرئيسية</div>
 
         <nav class="menu">
+
             <a href="#" class="menu-item active">
                 <span>⌂</span> الرئيسية
             </a>
@@ -42,6 +43,14 @@
 
             <a href="#editor" class="menu-item">
                 <span>✂</span> مونتاج الفيديو
+            </a>
+
+            <a href="#trim-editor" class="menu-item">
+                <span>◧</span> قص الفيديو
+            </a>
+
+            <a href="#mergeStudio" class="menu-item">
+                <span>🎬</span> دمج الفيديوهات
             </a>
 
             <a href="#image" class="menu-item">
@@ -55,14 +64,17 @@
             <a href="#projects" class="menu-item">
                 <span>▤</span> مشاريعي
             </a>
+
         </nav>
 
         <div class="sidebar-bottom">
+
             <div class="free-card">
                 <span>✦</span>
                 <h3>نسخة مجانية</h3>
                 <p>استمتع بأدوات الاستوديو المتاحة مجاناً.</p>
             </div>
+
         </div>
 
     </aside>
@@ -70,6 +82,7 @@
     <!-- MAIN CONTENT -->
     <main class="main-content">
 
+        <!-- TOPBAR -->
         <header class="topbar">
 
             <button class="mobile-menu" id="menuToggle">☰</button>
@@ -90,6 +103,7 @@
         <section class="hero">
 
             <div class="hero-content">
+
                 <span class="hero-label">✦ YOUR CREATIVE AI STUDIO</span>
 
                 <h1>
@@ -105,6 +119,7 @@
                 <a href="#create" class="primary-btn">
                     ابدأ مشروعك الآن ✦
                 </a>
+
             </div>
 
             <div class="hero-visual">
@@ -182,8 +197,13 @@
                         اختيار الملفات
                     </label>
 
-                    <input type="file" id="mediaInput"
-                    accept="video/*,image/*" multiple hidden>
+                    <input
+                        type="file"
+                        id="mediaInput"
+                        accept="video/*,image/*"
+                        multiple
+                        hidden
+                    >
 
                     <div id="fileList" class="file-list"></div>
 
@@ -202,89 +222,151 @@
                     </div>
 
                 </div>
+
+                <!-- VIDEO TIMELINE -->
                 <div class="timeline-editor">
 
-    <div class="timeline-header">
-        <h3>✂ Video Timeline</h3>
-        <span id="clipCounter">0 مقطع</span>
-    </div>
+                    <div class="timeline-header">
+                        <h3>✂ Video Timeline</h3>
+                        <span id="clipCounter">0 مقطع</span>
+                    </div>
 
-    <div class="timeline-toolbar">
-        <button id="addMoreClips">＋ إضافة مقاطع</button>
-        <button id="clearTimeline">حذف الكل</button>
-    </div>
+                    <div class="timeline-toolbar">
+                        <button id="addMoreClips">＋ إضافة مقاطع</button>
+                        <button id="clearTimeline">حذف الكل</button>
+                    </div>
 
-    <div id="timelineTracks" class="timeline-tracks">
-        <p class="timeline-empty">أضف فيديوهات لبدء المونتاج.</p>
-    </div>
+                    <div id="timelineTracks" class="timeline-tracks">
+                        <p class="timeline-empty">أضف فيديوهات لبدء المونتاج.</p>
+                    </div>
 
-    <div class="timeline-footer">
-        <span>المدة الإجمالية:</span>
-        <strong id="totalDuration">00:00</strong>
-    </div>
+                    <div class="timeline-footer">
+                        <span>المدة الإجمالية:</span>
+                        <strong id="totalDuration">00:00</strong>
+                    </div>
 
-</div>
+                </div>
 
             </div>
 
         </section>
 
-<!-- PROFESSIONAL VIDEO TRIMMER -->
-<section class="section" id="trim-editor">
+        <!-- PROFESSIONAL VIDEO TRIMMER -->
+        <section class="section" id="trim-editor">
 
-    <div class="section-heading">
-        <div>
-            <h2>✂ Professional Video Trimmer</h2>
-            <p>قص الفيديو وتصدير النتيجة بصيغة MP4.</p>
-        </div>
-    </div>
-
-    <div class="trim-box">
-
-        <div class="trim-upload">
-            <h3>📁 اختيار الفيديو</h3>
-            <input type="file" id="trimInput" accept="video/*">
-            <p id="trimFileName">لم يتم اختيار فيديو</p>
-        </div>
-
-        <div class="trim-preview">
-            <video id="trimPreview" controls playsinline></video>
-        </div>
-
-        <div class="trim-settings">
-
-            <div>
-                <label for="trimStart">وقت البداية (بالثواني)</label>
-                <input type="number" id="trimStart"
-                       min="0" step="0.1" value="0">
+            <div class="section-heading">
+                <div>
+                    <h2>✂ Professional Video Trimmer</h2>
+                    <p>قص الفيديو وتصدير النتيجة بصيغة MP4.</p>
+                </div>
             </div>
 
-            <div>
-                <label for="trimEnd">وقت النهاية (بالثواني)</label>
-                <input type="number" id="trimEnd"
-                       min="0" step="0.1" value="10">
+            <div class="trim-box">
+
+                <div class="trim-upload">
+                    <h3>📁 اختيار الفيديو</h3>
+                    <input type="file" id="trimInput" accept="video/*">
+                    <p id="trimFileName">لم يتم اختيار فيديو</p>
+                </div>
+
+                <div class="trim-preview">
+                    <video id="trimPreview" controls playsinline></video>
+                </div>
+
+                <div class="trim-settings">
+
+                    <div>
+                        <label for="trimStart">وقت البداية (بالثواني)</label>
+                        <input
+                            type="number"
+                            id="trimStart"
+                            min="0"
+                            step="0.1"
+                            value="0"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="trimEnd">وقت النهاية (بالثواني)</label>
+                        <input
+                            type="number"
+                            id="trimEnd"
+                            min="0"
+                            step="0.1"
+                            value="10"
+                        >
+                    </div>
+
+                </div>
+
+                <div class="trim-actions">
+                    <button id="loadFFmpeg">تحميل محرك المونتاج</button>
+                    <button id="exportTrim" disabled>✂ قص وتصدير MP4</button>
+                </div>
+
+                <div class="trim-progress">
+                    <div id="trimProgressBar"></div>
+                </div>
+
+                <p id="trimStatus">المحرك لم يتم تحميله بعد.</p>
+
+                <a id="downloadTrim" hidden download="AI-VIDEO-TRIMMED.mp4">
+                    ⬇ تحميل الفيديو النهائي
+                </a>
+
             </div>
 
-        </div>
+        </section>
 
-        <div class="trim-actions">
-            <button id="loadFFmpeg">تحميل محرك المونتاج</button>
-            <button id="exportTrim" disabled>✂ قص وتصدير MP4</button>
-        </div>
+        <!-- VIDEO MERGE STUDIO -->
+        <section class="section" id="mergeStudio">
 
-        <div class="trim-progress">
-            <div id="trimProgressBar"></div>
-        </div>
+            <div class="section-heading">
+                <div>
+                    <h2>🎬 دمج الفيديوهات</h2>
+                    <p>اجمع عدة مقاطع فيديو في فيديو واحد.</p>
+                </div>
+            </div>
 
-        <p id="trimStatus">المحرك لم يتم تحميله بعد.</p>
+            <div class="trim-box merge-box">
 
-        <a id="downloadTrim" hidden download="AI-VIDEO-TRIMMED.mp4">
-            ⬇ تحميل الفيديو النهائي
-        </a>
+                <h3>📁 اختيار الفيديوهات</h3>
 
-    </div>
+                <p>
+                    اختار جوج فيديوهات أو أكثر من جهازك
+                    باش تجمعهم في فيديو واحد.
+                </p>
 
-</section>
+                <input
+                    type="file"
+                    id="mergeInput"
+                    accept="video/*"
+                    multiple
+                >
+
+                <div id="mergeStatus" class="trim-status">
+                    لم يتم اختيار أي فيديو
+                </div>
+
+                <div class="trim-progress">
+                    <div id="mergeProgress"></div>
+                </div>
+
+                <button id="mergeButton" type="button">
+                    🎬 دمج الفيديوهات
+                </button>
+
+                <a
+                    id="mergeDownload"
+                    hidden
+                    download="AI-STUDIO-MERGED.mp4"
+                >
+                    ⬇ تحميل الفيديو النهائي
+                </a>
+
+            </div>
+
+        </section>
 
         <!-- AUDIO -->
         <section class="section" id="audio">
@@ -334,6 +416,7 @@
 
         </section>
 
+        <!-- FOOTER -->
         <footer>
             <p>AI VIDEO STUDIO PRO © 2026</p>
             <p>CREATED FOR CREATORS ✦</p>
@@ -342,46 +425,11 @@
     </main>
 
 </div>
-    
-<!-- VIDEO MERGE STUDIO -->
-<section class="trim-box merge-box" id="mergeStudio">
 
-    <h2>🎬 دمج الفيديوهات</h2>
-
-    <p>اختار جوج فيديوهات أو أكثر باش تجمعهم في فيديو واحد.</p>
-
-    <input
-        type="file"
-        id="mergeInput"
-        accept="video/*"
-        multiple
-    >
-
-    <div id="mergeStatus" class="trim-status">
-        لم يتم اختيار أي فيديو
-    </div>
-
-    <div class="trim-progress">
-        <div id="mergeProgress"></div>
-    </div>
-
-    <button id="mergeButton" type="button">
-        دمج الفيديوهات
-    </button>
-
-    <a
-        id="mergeDownload"
-        hidden
-        download="AI-STUDIO-MERGED.mp4"
-    >
-        تحميل الفيديو النهائي
-    </a>
-
-</section>
-
+<!-- JAVASCRIPT FILES -->
 <script src="script.js"></script>
 <script type="module" src="ffmpeg-editor.js"></script>
 <script type="module" src="merge-editor.js"></script>
-</body>
 
+</body>
 </html>
