@@ -342,6 +342,43 @@
     </main>
 
 </div>
+    
+<!-- VIDEO MERGE STUDIO -->
+<section class="trim-box merge-box" id="mergeStudio">
+
+    <h2>🎬 دمج الفيديوهات</h2>
+
+    <p>اختار جوج فيديوهات أو أكثر باش تجمعهم في فيديو واحد.</p>
+
+    <input
+        type="file"
+        id="mergeInput"
+        accept="video/*"
+        multiple
+    >
+
+    <div id="mergeStatus" class="trim-status">
+        لم يتم اختيار أي فيديو
+    </div>
+
+    <div class="trim-progress">
+        <div id="mergeProgress"></div>
+    </div>
+
+    <button id="mergeButton" type="button">
+        دمج الفيديوهات
+    </button>
+
+    <a
+        id="mergeDownload"
+        hidden
+        download="AI-STUDIO-MERGED.mp4"
+    >
+        تحميل الفيديو النهائي
+    </a>
+
+</section>
+
 <script src="script.js"></script>
 <script type="module" src="ffmpeg-editor.js"></script>
 </body>
