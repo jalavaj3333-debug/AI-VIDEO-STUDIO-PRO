@@ -1,146 +1,186 @@
 
-/* =================================
-   SMART AUTO MONTAGE ENGINE
-   AI VIDEO STUDIO PRO
-================================= */
+document.addEventListener("DOMContentLoaded", () => {
 
-const montageButton = document.getElementById("smartAutoMontage");
-const montageStatus = document.getElementById("autoMontageStatus");
-const montageProgress = document.getElementById("autoMontageProgress");
-const montageDownload = document.getElementById("autoMontageDownload");
+    const startButton = document.getElementById("smartAutoMontage");
+    const progressBar = document.getElementById("autoMontageProgress");
+    const statusText = document.getElementById("autoMontageStatus");
+    const downloadLink = document.getElementById("autoMontageDownload");
 
-let montageBusy = false;
-let montageURL = null;
-
-function montageMessage(message) {
-    montageStatus.textContent = message;
-}
-
-function montagePercent(value) {
-    montageProgress.style.width = value + "%";
-}
-
-function wait(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function waitForFFmpeg() {
-    if (window.videoFFmpegLoaded && window.videoFFmpeg) {
-        return window.videoFFmpeg;
+    if (!startButton) {
+        console.warn("Smart Auto Montage button not found.");
+        return;
     }
 
-    montageMessage("جاري تحميل محرك المونتاج...");
+    let isProcessing = false;
 
-    const loadButton = document.getElementById("loadFFmpeg");
-
-    if (loadButton && !loadButton.disabled) {
-        loadButton.click();
+    function updateStatus(message) {
+        if (statusText) statusText.textContent = message;
     }
 
-    for (let i = 0; i < 360; i++) {
-        if (window.videoFFmpegLoaded && window.videoFFmpeg) {
+    function updateProgress(value) {
+        if (progressBar) {
+            progressBar.style.width =
+                Math.max(0, Math.min(100, value)) + "%";
+        }
+    }
+
+    function safeName(index) {
+        return `montage_clip_${String(index).padStart(3, "0")}.mp4`;
+    }
+
+    function getExtension(file) {
+        const name = file.name || "";
+        const match = name.match(/\.([a-zA-Z0-9]+)$/);
+        return match ? match[1].toLowerCase() : "mp4";
+    }
+
+    async function waitForFFmpeg() {
+
+        if (
+            window.videoFFmpeg &&
+            window.videoFFmpegLoaded
+        ) {
             return window.videoFFmpeg;
         }
 
-        await wait(1000);
+        throw new Error(
+            "محرك FFmpeg غير جاهز. حمّل المحرك أولاً من أداة قص الفيديو."
+        );
     }
 
-    throw new Error("تعذر تحميل FFmpeg. حاول تحميل المحرك يدوياً.");
-}
+    async function createMontage() {
 
-function getSafeExtension(file) {
-    const ext = file.name.split(".").pop().toLowerCase();
-
-    return /^[a-z0-9]{1,8}$/.test(ext) ? ext : "mp4";
-}
-
-if (montageButton) {
-    montageButton.addEventListener("click", async () => {
-
-        if (montageBusy) return;
+        if (isProcessing) return;
 
         const clips = window.getStudioClips?.() || [];
 
-        if (clips.length < 2) {
-            montageMessage("خاصك ترفع جوج فيديوهات على الأقل.");
+        if (!clips.length) {
+            updateStatus("أضف فيديوهات إلى Timeline أولاً.");
             return;
         }
 
-        montageBusy = true;
-        montageButton.disabled = true;
-        montageDownload.hidden = true;
-        montagePercent(0);
+        const invalidClip = clips.find(clip =>
+            !clip.file ||
+            !clip.file.type.startsWith("video/")
+        );
 
-        const engineFiles = [];
+        if (invalidClip) {
+            updateStatus("كاين ملف غير صالح داخل Timeline.");
+            return;
+        }
+
+        if (clips.some(clip => !clip.duration || clip.duration <= 0)) {
+            updateStatus("انتظر حتى يتم تحميل معلومات مدة جميع الفيديوهات.");
+            return;
+        }
+
+        isProcessing = true;
+        startButton.disabled = true;
+        startButton.textContent = "⏳ جاري إنشاء الفيديو...";
+
+        updateProgress(0);
+
+        if (downloadLink) {
+            downloadLink.hidden = true;
+            downloadLink.removeAttribute("href");
+        }
+
+        let ffmpeg;
+        let outputURL = null;
+        const inputNames = [];
+        const outputName = "SMART_AUTO_MONTAGE.mp4";
 
         try {
-            montageMessage("جاري تجهيز محرك المونتاج...");
 
-            const engine = await waitForFFmpeg();
+            updateStatus("المرحلة 1/4: تجهيز محرك المونتاج...");
 
-            montagePercent(10);
+            ffmpeg = await waitForFFmpeg();
 
-            const inputNames = [];
+            const { fetchFile } = await import(
+                "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js"
+            );
+
+            updateProgress(5);
+
+            // Clean old temporary files
+            const oldFiles = await ffmpeg.listDir("/");
+
+            for (const entry of oldFiles) {
+                if (
+                    entry.name.startsWith("montage_clip_") ||
+                    entry.name === "SMART_AUTO_MONTAGE.mp4"
+                ) {
+                    try {
+                        await ffmpeg.deleteFile(entry.name);
+                    } catch (error) {
+                        console.warn("Could not remove old file:", entry.name);
+                    }
+                }
+            }
+
+            // Write videos to FFmpeg memory
+            updateStatus("المرحلة 2/4: تحميل المقاطع...");
 
             for (let i = 0; i < clips.length; i++) {
+
                 const clip = clips[i];
+                const extension = getExtension(clip.file);
+                const inputName =
+                    `montage_clip_${String(i + 1).padStart(3, "0")}.${extension}`;
 
-                if (!clip.file.type.startsWith("video/")) {
-                    continue;
-                }
+                const data = await fetchFile(clip.file);
 
-                const name = `auto_clip_${i}.${getSafeExtension(clip.file)}`;
+                await ffmpeg.writeFile(inputName, data);
 
-                await engine.writeFile(
-                    name,
-                    new Uint8Array(await clip.file.arrayBuffer())
+                inputNames.push(inputName);
+
+                updateProgress(
+                    5 + ((i + 1) / clips.length) * 35
                 );
 
-                inputNames.push(name);
-                engineFiles.push(name);
-
-                montagePercent(
-                    10 + Math.round((i + 1) / clips.length * 25)
+                updateStatus(
+                    `تحميل المقطع ${i + 1} من ${clips.length}...`
                 );
+
             }
 
-            if (inputNames.length < 2) {
-                throw new Error("خاصك جوج فيديوهات صالحين على الأقل.");
-            }
+            // Build FFmpeg filter
+            updateStatus("المرحلة 3/4: تركيب الفيديوهات...");
 
-            montageMessage("جاري تحليل وتجهيز المقاطع...");
+            const inputs = [];
 
-            const command = [];
+            inputNames.forEach(name => {
+                inputs.push("-i", name);
+            });
+
             const filters = [];
-            const videoLabels = [];
 
-            inputNames.forEach((name, index) => {
-                command.push("-i", name);
+            clips.forEach((clip, index) => {
 
                 filters.push(
                     `[${index}:v:0]` +
-                    `setpts=PTS-STARTPTS,` +
                     `scale=1280:720:force_original_aspect_ratio=decrease,` +
                     `pad=1280:720:(ow-iw)/2:(oh-ih)/2,` +
                     `setsar=1,fps=30,format=yuv420p[v${index}]`
                 );
 
-                videoLabels.push(`[v${index}]`);
             });
 
+            const videoLabels = clips
+                .map((clip, index) => `[v${index}]`)
+                .join("");
+
             filters.push(
-                `${videoLabels.join("")}` +
-                `concat=n=${inputNames.length}:v=1:a=0[vout]`
+                `${videoLabels}concat=n=${clips.length}:v=1:a=0[outv]`
             );
 
-            const outputName = "SMART_AUTO_MONTAGE.mp4";
-            engineFiles.push(outputName);
-
-            command.push(
+            const args = [
+                "-y",
+                ...inputs,
                 "-filter_complex",
                 filters.join(";"),
                 "-map",
-                "[vout]",
+                "[outv]",
                 "-an",
                 "-c:v",
                 "libx264",
@@ -151,63 +191,78 @@ if (montageButton) {
                 "-movflags",
                 "+faststart",
                 outputName
-            );
+            ];
 
-            montagePercent(40);
-            montageMessage("جاري تركيب الفيديوهات... المرجو الانتظار.");
+            await ffmpeg.exec(args);
 
-            const result = await engine.exec(command);
+            updateProgress(85);
 
-            if (result !== 0) {
-                throw new Error("وقع مشكل أثناء تركيب المقاطع.");
-            }
+            // Export result
+            updateStatus("المرحلة 4/4: تجهيز الفيديو النهائي...");
 
-            montagePercent(85);
-            montageMessage("جاري تجهيز الفيديو النهائي...");
-
-            const data = await engine.readFile(outputName);
+            const outputData = await ffmpeg.readFile(outputName);
 
             const blob = new Blob(
-                [data],
+                [outputData],
                 { type: "video/mp4" }
             );
 
-            if (montageURL) {
-                URL.revokeObjectURL(montageURL);
+            outputURL = URL.createObjectURL(blob);
+
+            if (downloadLink) {
+
+                downloadLink.href = outputURL;
+                downloadLink.download = outputName;
+                downloadLink.hidden = false;
+
             }
 
-            montageURL = URL.createObjectURL(blob);
+            updateProgress(100);
 
-            montageDownload.href = montageURL;
-            montageDownload.hidden = false;
-
-            montagePercent(100);
-
-            montageMessage(
-                "تم تركيب الفيديو بنجاح! اضغط على تحميل الفيديو النهائي."
+            updateStatus(
+                "تم إنشاء المونتاج بنجاح! اضغط على تحميل الفيديو."
             );
 
         } catch (error) {
-            console.error("Smart Montage Error:", error);
 
-            montageMessage("خطأ: " + error.message);
-            montagePercent(0);
+            console.error("AUTO MONTAGE ERROR:", error);
+
+            updateProgress(0);
+
+            updateStatus(
+                "وقع خطأ: " + (error.message || "تعذر إنشاء الفيديو.")
+            );
 
         } finally {
-            const engine = window.videoFFmpeg;
 
-            if (engine) {
-                for (const file of engineFiles) {
+            if (ffmpeg) {
+
+                for (const name of inputNames) {
                     try {
-                        await engine.deleteFile(file);
+                        await ffmpeg.deleteFile(name);
                     } catch (error) {
-                        // Ignore missing files.
+                        console.warn(error);
                     }
                 }
+
+                try {
+                    await ffmpeg.deleteFile(outputName);
+                } catch (error) {
+                    console.warn(error);
+                }
+
             }
 
-            montageButton.disabled = false;
-            montageBusy = false;
+            isProcessing = false;
+            startButton.disabled = false;
+            startButton.textContent = "✨ ابدأ المونتاج التلقائي";
+
         }
-    });
-}
+
+    }
+
+    startButton.addEventListener("click", createMontage);
+
+    console.log("SMART AUTO MONTAGE READY!");
+
+});
