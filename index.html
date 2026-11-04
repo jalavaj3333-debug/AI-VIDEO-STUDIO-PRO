@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#090909">
+
+    <title>AI Video Studio Pro</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            <span class="logo-icon">✦</span>
+            <div>
+                <h2>AI VIDEO</h2>
+                <small>STUDIO PRO</small>
+            </div>
+        </div>
+
+        <div class="menu-title">القائمة الرئيسية</div>
+
+        <nav class="menu">
+            <a href="#" class="menu-item active">
+                <span>⌂</span> الرئيسية
+            </a>
+
+            <a href="#create" class="menu-item">
+                <span>✦</span> إنشاء فيديو
+            </a>
+
+            <a href="#editor" class="menu-item">
+                <span>✂</span> مونتاج الفيديو
+            </a>
+
+            <a href="#image" class="menu-item">
+                <span>▧</span> الصور بالذكاء الاصطناعي
+            </a>
+
+            <a href="#audio" class="menu-item">
+                <span>♫</span> الصوت والموسيقى
+            </a>
+
+            <a href="#projects" class="menu-item">
+                <span>▤</span> مشاريعي
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="free-card">
+                <span>✦</span>
+                <h3>نسخة مجانية</h3>
+                <p>استمتع بأدوات الاستوديو المتاحة مجاناً.</p>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <button class="mobile-menu" id="menuToggle">☰</button>
+
+            <div class="welcome">
+                <h2>مرحبا بك في استوديو الذكاء الاصطناعي</h2>
+                <p>حوّل أفكارك إلى فيديوهات إبداعية.</p>
+            </div>
+
+            <div class="top-actions">
+                <span class="status">● النظام جاهز</span>
+                <div class="avatar">AI</div>
+            </div>
+
+        </header>
+
+        <!-- HERO -->
+        <section class="hero">
+
+            <div class="hero-content">
+                <span class="hero-label">✦ YOUR CREATIVE AI STUDIO</span>
+
+                <h1>
+                    أطلق العنان<br>
+                    <span>لإبداعك بالفيديو</span>
+                </h1>
+
+                <p>
+                    أنشئ الفيديوهات، عدّل المقاطع، أضف المؤثرات
+                    والصوت باستعمال أدوات الذكاء الاصطناعي.
+                </p>
+
+                <a href="#create" class="primary-btn">
+                    ابدأ مشروعك الآن ✦
+                </a>
+            </div>
+
+            <div class="hero-visual">
+                <div class="visual-circle">▶</div>
+                <div class="visual-text">AI VIDEO GENERATION</div>
+            </div>
+
+        </section>
+
+        <!-- CREATE VIDEO -->
+        <section class="section" id="create">
+
+            <div class="section-heading">
+                <div>
+                    <h2>إنشاء فيديو جديد</h2>
+                    <p>اختار الطريقة المناسبة لصناعة الفيديو.</p>
+                </div>
+            </div>
+
+            <div class="tools-grid">
+
+                <div class="tool-card">
+                    <div class="tool-icon purple">✍</div>
+                    <h3>نص إلى فيديو</h3>
+                    <p>حوّل السكريبت ديالك إلى مشاهد فيديو.</p>
+                    <button class="tool-btn" data-tool="text">ابدأ الآن</button>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon blue">▧</div>
+                    <h3>صورة إلى فيديو</h3>
+                    <p>حوّل الصور الثابتة إلى مشاهد متحركة.</p>
+                    <button class="tool-btn" data-tool="image">ابدأ الآن</button>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon orange">✂</div>
+                    <h3>مونتاج تلقائي</h3>
+                    <p>نظّم المقاطع وأضف النصوص والانتقالات.</p>
+                    <button class="tool-btn" data-tool="editor">ابدأ الآن</button>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon green">♫</div>
+                    <h3>إنشاء الصوت</h3>
+                    <p>أضف التعليق الصوتي والمؤثرات الصوتية.</p>
+                    <button class="tool-btn" data-tool="audio">ابدأ الآن</button>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- VIDEO WORKSPACE -->
+        <section class="section workspace" id="editor">
+
+            <div class="section-heading">
+                <div>
+                    <h2>مساحة العمل</h2>
+                    <p>حضّر الفيديو ديالك داخل الاستوديو.</p>
+                </div>
+            </div>
+
+            <div class="workspace-box">
+
+                <div class="upload-area" id="uploadArea">
+
+                    <div class="upload-icon">⬆</div>
+
+                    <h3>أضف ملفاتك إلى المشروع</h3>
+
+                    <p>اختار الفيديوهات أو الصور من جهازك.</p>
+
+                    <label for="mediaInput" class="upload-btn">
+                        اختيار الملفات
+                    </label>
+
+                    <input type="file" id="mediaInput"
+                    accept="video/*,image/*" multiple hidden>
+
+                    <div id="fileList" class="file-list"></div>
+
+                </div>
+
+                <div class="preview-area">
+
+                    <div class="preview-screen" id="previewScreen">
+                        <span class="play-icon">▶</span>
+                        <p>معاينة الفيديو</p>
+                    </div>
+
+                    <div class="preview-controls">
+                        <button id="playBtn">▶ تشغيل</button>
+                        <span id="mediaInfo">لا يوجد ملف محدد</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- AUDIO -->
+        <section class="section" id="audio">
+
+            <div class="section-heading">
+                <div>
+                    <h2>الصوت والموسيقى</h2>
+                    <p>أضف لمسة احترافية إلى فيديوهاتك.</p>
+                </div>
+            </div>
+
+            <div class="tools-grid">
+
+                <div class="tool-card">
+                    <div class="tool-icon purple">🎙</div>
+                    <h3>التعليق الصوتي</h3>
+                    <p>حضّر نص التعليق الصوتي لمشروعك.</p>
+                    <button class="tool-btn" data-tool="voice">فتح الأداة</button>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon green">♫</div>
+                    <h3>الموسيقى</h3>
+                    <p>أضف موسيقى مناسبة للفيديو.</p>
+                    <button class="tool-btn" data-tool="music">فتح الأداة</button>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- PROJECTS -->
+        <section class="section" id="projects">
+
+            <div class="section-heading">
+                <div>
+                    <h2>مشاريعي الأخيرة</h2>
+                    <p>المشاريع اللي خدام عليها.</p>
+                </div>
+            </div>
+
+            <div class="empty-projects">
+                <div>▤</div>
+                <h3>مازال ما عندك حتى مشروع</h3>
+                <p>بدا أول مشروع ديالك وغادي يظهر هنا.</p>
+            </div>
+
+        </section>
+
+        <footer>
+            <p>AI VIDEO STUDIO PRO © 2026</p>
+            <p>CREATED FOR CREATORS ✦</p>
+        </footer>
+
+    </main>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
