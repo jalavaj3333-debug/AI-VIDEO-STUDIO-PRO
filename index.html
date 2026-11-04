@@ -53,12 +53,8 @@
                 <span>🎬</span> دمج الفيديوهات
             </a>
 
-            <a href="#image" class="menu-item">
-                <span>▧</span> الصور بالذكاء الاصطناعي
-            </a>
-
             <a href="#audio" class="menu-item">
-                <span>♫</span> الصوت والموسيقى
+                <span>♫</span> Audio Studio Pro
             </a>
 
             <a href="#projects" class="menu-item">
@@ -68,13 +64,11 @@
         </nav>
 
         <div class="sidebar-bottom">
-
             <div class="free-card">
                 <span>✦</span>
                 <h3>نسخة مجانية</h3>
                 <p>استمتع بأدوات الاستوديو المتاحة مجاناً.</p>
             </div>
-
         </div>
 
     </aside>
@@ -166,7 +160,7 @@
                     <div class="tool-icon green">♫</div>
                     <h3>إنشاء الصوت</h3>
                     <p>أضف التعليق الصوتي والمؤثرات الصوتية.</p>
-                    <button class="tool-btn" data-tool="audio">ابدأ الآن</button>
+                    <a href="#audio" class="tool-btn">ابدأ الآن</a>
                 </div>
 
             </div>
@@ -251,7 +245,7 @@
 
         </section>
 
-        <!-- PROFESSIONAL VIDEO TRIMMER -->
+        <!-- VIDEO TRIMMER -->
         <section class="section" id="trim-editor">
 
             <div class="section-heading">
@@ -277,24 +271,12 @@
 
                     <div>
                         <label for="trimStart">وقت البداية (بالثواني)</label>
-                        <input
-                            type="number"
-                            id="trimStart"
-                            min="0"
-                            step="0.1"
-                            value="0"
-                        >
+                        <input type="number" id="trimStart" min="0" step="0.1" value="0">
                     </div>
 
                     <div>
                         <label for="trimEnd">وقت النهاية (بالثواني)</label>
-                        <input
-                            type="number"
-                            id="trimEnd"
-                            min="0"
-                            step="0.1"
-                            value="10"
-                        >
+                        <input type="number" id="trimEnd" min="0" step="0.1" value="10">
                     </div>
 
                 </div>
@@ -332,17 +314,9 @@
 
                 <h3>📁 اختيار الفيديوهات</h3>
 
-                <p>
-                    اختار جوج فيديوهات أو أكثر من جهازك
-                    باش تجمعهم في فيديو واحد.
-                </p>
+                <p>اختار جوج فيديوهات أو أكثر من جهازك باش تجمعهم في فيديو واحد.</p>
 
-                <input
-                    type="file"
-                    id="mergeInput"
-                    accept="video/*"
-                    multiple
-                >
+                <input type="file" id="mergeInput" accept="video/*" multiple>
 
                 <div id="mergeStatus" class="trim-status">
                     لم يتم اختيار أي فيديو
@@ -356,11 +330,7 @@
                     🎬 دمج الفيديوهات
                 </button>
 
-                <a
-                    id="mergeDownload"
-                    hidden
-                    download="AI-STUDIO-MERGED.mp4"
-                >
+                <a id="mergeDownload" hidden download="AI-STUDIO-MERGED.mp4">
                     ⬇ تحميل الفيديو النهائي
                 </a>
 
@@ -368,31 +338,127 @@
 
         </section>
 
-        <!-- AUDIO -->
+        <!-- AUDIO STUDIO PRO -->
         <section class="section" id="audio">
 
             <div class="section-heading">
                 <div>
-                    <h2>الصوت والموسيقى</h2>
-                    <p>أضف لمسة احترافية إلى فيديوهاتك.</p>
+                    <h2>🎵 Audio Studio Pro</h2>
+                    <p>أضف الموسيقى والتعليق الصوتي وتحكم في مستويات الصوت.</p>
                 </div>
             </div>
 
-            <div class="tools-grid">
+            <div class="audio-studio-grid">
 
-                <div class="tool-card">
-                    <div class="tool-icon purple">🎙</div>
-                    <h3>التعليق الصوتي</h3>
-                    <p>حضّر نص التعليق الصوتي لمشروعك.</p>
-                    <button class="tool-btn" data-tool="voice">فتح الأداة</button>
+                <!-- VIDEO -->
+                <div class="audio-card">
+
+                    <h3>🎬 الفيديو الأصلي</h3>
+
+                    <input type="file" id="audioVideoInput" accept="video/*">
+
+                    <video
+                        id="audioVideoPreview"
+                        controls
+                        playsinline
+                        hidden
+                        class="audio-preview-video">
+                    </video>
+
+                    <p id="audioVideoName">لم يتم اختيار فيديو</p>
+
+                    <label class="audio-check">
+                        <input type="checkbox" id="keepOriginalAudio" checked>
+                        الاحتفاظ بالصوت الأصلي للفيديو
+                    </label>
+
+                    <label for="originalVolume">مستوى صوت الفيديو الأصلي</label>
+
+                    <input
+                        type="range"
+                        id="originalVolume"
+                        min="0"
+                        max="2"
+                        step="0.05"
+                        value="1"
+                    >
+
+                    <span id="originalVolumeValue">100%</span>
+
                 </div>
 
-                <div class="tool-card">
-                    <div class="tool-icon green">♫</div>
-                    <h3>الموسيقى</h3>
-                    <p>أضف موسيقى مناسبة للفيديو.</p>
-                    <button class="tool-btn" data-tool="music">فتح الأداة</button>
+                <!-- MUSIC -->
+                <div class="audio-card">
+
+                    <h3>🎼 الموسيقى الخلفية</h3>
+
+                    <input type="file" id="musicInput" accept="audio/*">
+
+                    <audio id="musicPreview" controls hidden></audio>
+
+                    <p id="musicName">لم يتم اختيار موسيقى</p>
+
+                    <label for="musicVolume">مستوى الموسيقى</label>
+
+                    <input
+                        type="range"
+                        id="musicVolume"
+                        min="0"
+                        max="2"
+                        step="0.05"
+                        value="0.25"
+                    >
+
+                    <span id="musicVolumeValue">25%</span>
+
                 </div>
+
+                <!-- VOICE -->
+                <div class="audio-card">
+
+                    <h3>🎙️ التعليق الصوتي</h3>
+
+                    <input type="file" id="voiceInput" accept="audio/*">
+
+                    <audio id="voicePreview" controls hidden></audio>
+
+                    <p id="voiceName">التعليق الصوتي اختياري</p>
+
+                    <label for="voiceVolume">مستوى التعليق الصوتي</label>
+
+                    <input
+                        type="range"
+                        id="voiceVolume"
+                        min="0"
+                        max="2"
+                        step="0.05"
+                        value="1"
+                    >
+
+                    <span id="voiceVolumeValue">100%</span>
+
+                </div>
+
+            </div>
+
+            <div class="audio-export-box">
+
+                <button id="exportAudioMix" type="button">
+                    🎬 إنشاء الفيديو بالصوت الجديد
+                </button>
+
+                <div class="audio-progress">
+                    <div id="audioProgressBar"></div>
+                </div>
+
+                <p id="audioStatus">اختار الفيديو والموسيقى للبدء.</p>
+
+                <a
+                    id="audioDownload"
+                    hidden
+                    download="AI-STUDIO-AUDIO.mp4">
+                    ⬇ تحميل الفيديو النهائي
+                </a>
 
             </div>
 
@@ -430,6 +496,7 @@
 <script src="script.js"></script>
 <script type="module" src="ffmpeg-editor.js"></script>
 <script type="module" src="merge-editor.js"></script>
+<script src="audio-editor.js"></script>
 
 </body>
 </html>
