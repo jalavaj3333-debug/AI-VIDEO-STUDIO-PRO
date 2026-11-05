@@ -38,37 +38,14 @@
     <div class="sidebar-label">القائمة الرئيسية</div>
 
     <nav class="menu">
-      <a href="#home" class="menu-item active">
-        <span>⌂</span> الرئيسية
-      </a>
-
-      <a href="#create" class="menu-item">
-        <span>✦</span> إنشاء فيديو
-      </a>
-
-      <a href="#text-to-video" class="menu-item">
-        <span>✍</span> Script to Video
-      </a>
-
-      <a href="#editor" class="menu-item">
-        <span>✂</span> مونتاج الفيديو
-      </a>
-
-      <a href="#trim-editor" class="menu-item">
-        <span>◧</span> قص الفيديو
-      </a>
-
-      <a href="#mergeStudio" class="menu-item">
-        <span>🎬</span> دمج الفيديوهات
-      </a>
-
-      <a href="#audio" class="menu-item">
-        <span>♫</span> Audio Studio
-      </a>
-
-      <a href="#projects" class="menu-item">
-        <span>▤</span> مشاريعي
-      </a>
+      <a href="#home" class="menu-item active"><span>⌂</span> الرئيسية</a>
+      <a href="#create" class="menu-item"><span>✦</span> إنشاء فيديو</a>
+      <a href="#text-to-video" class="menu-item"><span>✍</span> Script to Video</a>
+      <a href="#editor" class="menu-item"><span>✂</span> مونتاج الفيديو</a>
+      <a href="#trim-editor" class="menu-item"><span>◧</span> قص الفيديو</a>
+      <a href="#mergeStudio" class="menu-item"><span>🎬</span> دمج الفيديوهات</a>
+      <a href="#audio" class="menu-item"><span>♫</span> Audio Studio</a>
+      <a href="#projects" class="menu-item"><span>▤</span> مشاريعي</a>
     </nav>
 
     <div class="sidebar-bottom">
@@ -83,7 +60,7 @@
   <!-- MAIN CONTENT -->
   <main class="main-content">
 
-    <!-- HOME HERO -->
+    <!-- HOME -->
     <section class="hero" id="home">
       <div class="hero-content">
         <span class="hero-tag">✦ CREATIVE AI WORKSPACE</span>
@@ -178,19 +155,11 @@
 
       <div class="studio-panel">
         <label for="videoScript">السكريبت ديالك</label>
-        <textarea
-          id="videoScript"
-          rows="8"
-          placeholder="كتب هنا القصة أو السكريبت ديال الفيديو..."
-        ></textarea>
+        <textarea id="videoScript" rows="8" placeholder="كتب هنا القصة أو السكريبت ديال الفيديو..."></textarea>
 
         <div class="form-actions">
-          <button id="generateScenes" class="primary-btn" type="button">
-            ✦ إنشاء المشاهد
-          </button>
-          <button id="clearScript" class="secondary-btn" type="button">
-            مسح النص
-          </button>
+          <button id="generateScenes" class="primary-btn" type="button">✦ إنشاء المشاهد</button>
+          <button id="clearScript" class="secondary-btn" type="button">مسح النص</button>
         </div>
 
         <div class="settings-grid">
@@ -233,9 +202,7 @@
         </div>
 
         <div class="form-actions">
-          <button id="exportVideo" class="primary-btn" type="button">
-            تصدير الفيديو
-          </button>
+          <button id="exportVideo" class="primary-btn" type="button">تصدير الفيديو</button>
         </div>
       </div>
     </section>
@@ -256,16 +223,8 @@
           <div class="upload-icon">⬆</div>
           <h3>حمّل الفيديوهات أو الصور</h3>
           <p>اختار الملفات من الجهاز ديالك أو جرّهم لهنا.</p>
-          <button class="primary-btn" id="chooseMedia" type="button">
-            اختيار الملفات
-          </button>
-          <input
-            type="file"
-            id="mediaInput"
-            accept="video/*,image/*"
-            multiple
-            hidden
-          >
+          <button class="primary-btn" id="chooseMedia" type="button">اختيار الملفات</button>
+          <input type="file" id="mediaInput" accept="video/*,image/*" multiple hidden>
         </div>
 
         <div class="editor-layout">
@@ -310,9 +269,7 @@
           </div>
 
           <div id="timelineTracks" class="timeline-tracks">
-            <div class="timeline-empty">
-              زيد الملفات باش تبان المقاطع هنا.
-            </div>
+            <div class="timeline-empty">زيد الملفات باش تبان المقاطع هنا.</div>
           </div>
         </div>
 
@@ -321,8 +278,8 @@
           <div class="section-heading">
             <div>
               <span class="section-kicker">AUTOMATION</span>
-              <h2>Smart Auto Montage</h2>
-              <p>أدوات تنظيم وتجهيز المقاطع للمونتاج.</p>
+              <h2>Smart Auto Montage Pro</h2>
+              <p>وجد مونتاج تلقائي باستعمال الفيديوهات اللي ضفتي للمشروع.</p>
             </div>
           </div>
 
@@ -345,13 +302,34 @@
                 <option value="simple">بسيط</option>
               </select>
             </div>
+
+            <div class="setting-item">
+              <label for="musicVolume">مستوى صوت الموسيقى</label>
+              <input type="range" id="musicVolume" min="0" max="100" value="25">
+            </div>
           </div>
 
-          <button id="autoMontageBtn" class="primary-btn" type="button">
+          <button id="smartAutoMontage" class="primary-btn" type="button">
             ✦ إنشاء المونتاج التلقائي
           </button>
 
-          <div id="montageResult" class="montage-result"></div>
+          <div class="montage-progress-wrapper">
+            <progress id="autoMontageProgress" value="0" max="100"></progress>
+          </div>
+
+          <p id="autoMontageStatus" class="tool-status" aria-live="polite">
+            واجد للمونتاج.
+          </p>
+
+          <a
+            id="autoMontageDownload"
+            class="primary-btn"
+            href="#"
+            hidden
+            download="AI-Video-Studio-Pro.mp4"
+          >
+            تحميل الفيديو النهائي
+          </a>
         </div>
 
       </div>
@@ -376,12 +354,8 @@
         </div>
 
         <div class="form-actions">
-          <button id="loadFFmpeg" class="secondary-btn" type="button">
-            تحميل محرك التحرير
-          </button>
-          <button id="exportTrim" class="primary-btn" type="button">
-            تصدير الجزء المحدد
-          </button>
+          <button id="loadFFmpeg" class="secondary-btn" type="button">تحميل محرك التحرير</button>
+          <button id="exportTrim" class="primary-btn" type="button">تصدير الجزء المحدد</button>
         </div>
 
         <div id="trimStatus" class="tool-status" aria-live="polite"></div>
@@ -406,9 +380,7 @@
           <p class="empty-message">الفيديوهات المختارة غادي تظهر هنا.</p>
         </div>
 
-        <button id="mergeButton" class="primary-btn" type="button">
-          دمج الفيديوهات
-        </button>
+        <button id="mergeButton" class="primary-btn" type="button">دمج الفيديوهات</button>
 
         <div id="mergeStatus" class="tool-status" aria-live="polite"></div>
         <div id="mergeResult" class="merge-result"></div>
@@ -451,12 +423,8 @@
         <div class="studio-panel">
           <h3>تسجيل صوت جديد</h3>
           <p>استعمل الميكروفون لتسجيل تعليق صوتي.</p>
-          <button id="recordBtn" class="primary-btn" type="button">
-            ● بدء التسجيل
-          </button>
-          <button id="stopRecordBtn" class="secondary-btn" type="button">
-            إيقاف التسجيل
-          </button>
+          <button id="recordBtn" class="primary-btn" type="button">● بدء التسجيل</button>
+          <button id="stopRecordBtn" class="secondary-btn" type="button">إيقاف التسجيل</button>
           <div id="recordingStatus" class="tool-status" aria-live="polite"></div>
           <div id="recordingPreview"></div>
         </div>
@@ -465,9 +433,7 @@
 
       <div class="studio-panel audio-export-panel">
         <h3>تصدير الصوت والفيديو</h3>
-        <button id="exportAudioVideo" class="primary-btn" type="button">
-          تصدير المشروع
-        </button>
+        <button id="exportAudioVideo" class="primary-btn" type="button">تصدير المشروع</button>
         <div id="audioStatus" class="tool-status" aria-live="polite"></div>
       </div>
     </section>
@@ -484,9 +450,7 @@
 
       <div class="studio-panel">
         <div id="projectsList" class="projects-list">
-          <div class="empty-message">
-            مازال ما كاين حتى مشروع محفوظ.
-          </div>
+          <div class="empty-message">مازال ما كاين حتى مشروع محفوظ.</div>
         </div>
       </div>
     </section>
