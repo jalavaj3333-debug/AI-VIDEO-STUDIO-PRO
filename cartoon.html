@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Video Studio Pro - Cartoon Studio</title>
+  <link rel="stylesheet" href="cartoon.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="back">← الرجوع للاستوديو</a>
+    <h1>🎬 Cartoon Studio</h1>
+    <span class="gold">AI VIDEO STUDIO PRO</span>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <h2>صايب الكرتون ديالك</h2>
+      <p>أنشئ مشاهد كرتونية 2D و3D، حرّك الشخصيات، وزيد الحوار.</p>
+    </section>
+
+    <nav class="mode-tabs">
+      <button class="mode active" data-mode="2d">🎨 كرتون 2D</button>
+      <button class="mode" data-mode="3d">🧊 كرتون 3D</button>
+    </nav>
+
+    <section id="studio2d" class="studio">
+      <div class="workspace">
+        <canvas id="cartoonCanvas" width="960" height="540"></canvas>
+      </div>
+
+      <div class="controls">
+        <label>اسم الشخصية</label>
+        <input id="characterName" value="Smailly Hero">
+
+        <label>لون الشخصية</label>
+        <input id="characterColor" type="color" value="#e5a928">
+
+        <label>الخلفية</label>
+        <select id="background">
+          <option value="sky">سماء زرقاء</option>
+          <option value="forest">غابة</option>
+          <option value="night">ليل ونجوم</option>
+          <option value="desert">صحراء</option>
+        </select>
+
+        <label>الحوار</label>
+        <input id="dialogue" value="مرحبا بكم في عالم المغامرات!">
+
+        <label>مدة الفيديو بالثواني</label>
+        <input id="duration" type="number" min="3" max="30" value="8">
+
+        <div class="buttons">
+          <button id="previewBtn">▶ معاينة الحركة</button>
+          <button id="stopBtn">■ إيقاف</button>
+          <button id="exportBtn">⬇ تصدير الفيديو</button>
+        </div>
+
+        <p id="status">الاستوديو جاهز.</p>
+      </div>
+    </section>
+
+    <section id="studio3d" class="studio hidden">
+      <div id="threeScene"></div>
+      <div class="controls">
+        <h3>3D Cartoon Studio</h3>
+        <p>هنا غادي نبنيو الشخصيات والمشاهد ثلاثية الأبعاد.</p>
+        <p class="notice">المرحلة الحالية: معاينة أولية ثلاثية الأبعاد. من بعد نضيفو الشخصيات، الحركة والكاميرا.</p>
+        <button id="reset3d">إعادة المشهد 3D</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="cartoon.js"></script>
+</body>
+</html>
