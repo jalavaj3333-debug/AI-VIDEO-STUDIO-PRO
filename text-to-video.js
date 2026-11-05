@@ -1,6 +1,6 @@
 
 document.addEventListener("DOMContentLoaded", () => {
-    const $ = (id) => document.getElementById(id);
+    const $ = id => document.getElementById(id);
 
     const scriptInput = $("videoScript");
     const generateButton = $("generateScenes");
@@ -15,16 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const status = $("textVideoStatus");
     const downloadLink = $("textVideoDownload");
 
-    if (
-        !scriptInput ||
-        !generateButton ||
-        !clearButton ||
-        !sceneList ||
-        !durationInput ||
-        !exportButton ||
-        !downloadLink
-    ) {
-        console.error("Text to Video: بعض عناصر HTML غير موجودة.");
+    if (!scriptInput || !generateButton || !clearButton ||
+        !sceneList || !durationInput || !exportButton || !downloadLink) {
+        console.error("Text to Video: عناصر HTML ناقصة.");
         return;
     }
 
@@ -32,21 +25,24 @@ document.addEventListener("DOMContentLoaded", () => {
     let outputURL = null;
     let exporting = false;
 
+    const FPS = 30;
+    const TRANSITION = 0.8;
+
     function setStatus(message) {
         if (status) status.textContent = message;
     }
 
     function setProgress(value) {
         if (progressBar) {
-            progressBar.style.width = `${Math.max(0, Math.min(100, value))}%`;
+            progressBar.style.width =
+                `${Math.max(0, Math.min(100, value))}%`;
         }
     }
 
     function formatTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const remaining = seconds % 60;
-
-        return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
     }
 
     function clearDownload() {
@@ -67,9 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="scene-empty">
                     <span>🎞️</span>
                     <p>كتب السكريبت واضغط على تقسيم النص إلى مشاهد.</p>
-                </div>
-            `;
-
+                </div>`;
             if (sceneCount) sceneCount.textContent = "0 مشهد";
             if (totalDuration) totalDuration.textContent = "00:00";
             return;
@@ -83,12 +77,14 @@ document.addEventListener("DOMContentLoaded", () => {
             heading.textContent = `🎬 المشهد ${index + 1}`;
 
             const paragraph = document.createElement("p");
-            paragraph.textContent = scene;
+            paragraph.textContent = scene.text;
 
-            const duration = document.createElement("small");
-            duration.textContent = `${durationInput.value} ثوانٍ`;
+            const imageInfo = document.createElement("small");
+            imageInfo.textContent = scene.image
+                ? "🖼️ الصورة جاهزة"
+                : "🔎 سيتم البحث عن صورة عند التصدير";
 
-            card.append(heading, paragraph, duration);
+            card.append(heading, paragraph, imageInfo);
             sceneList.appendChild(card);
         });
 
@@ -96,14 +92,233 @@ document.addEventListener("DOMContentLoaded", () => {
             sceneCount.textContent = `${scenes.length} مشهد`;
         }
 
-        const seconds = scenes.length * Number(durationInput.value);
-
         if (totalDuration) {
-            totalDuration.textContent = formatTime(seconds);
+            totalDuration.textContent = formatTime(
+                scenes.length * Number(durationInput.value)
+            );
         }
     }
 
-    // تقسيم السكريبت إلى مشاهد
+    // كلمات بحث بسيطة من نص المشهد
+    function getSearchQuery(text) {
+        const stopWords = new Set([
+            "من", "في", "على", "إلى", "عن", "مع", "هذا", "هذه",
+            "كان", "كانت", "هو", "هي", "ثم", "بعد", "قبل",
+            "the", "and", "for", "with", "from", "that", "this",
+            "was", "were", "are", "you", "your", "into"
+        ]);
+
+        const words = text
+            .replace(/[^\p{L}\p{N}\s]/gu, " ")
+            .split(/\s+/)
+            .filter(word => word.length > 2 && !stopWords.has(word.toLowerCase()));
+
+        return words.slice(0, 7).join(" ") || text.slice(0, 80);
+    }
+
+    // البحث عن صورة مجانية في Wikimedia Commons
+    async function searchSceneImage(text) {
+        const query = getSearchQuery(text);
+
+        const apiURL = new URL(
+            "https://commons.wikimedia.org/w/api.php"
+        );
+
+        apiURL.search = new URLSearchParams({
+            action: "query",
+            generator: "search",
+            gsrsearch: query,
+            gsrnamespace: "6",
+            gsrlimit: "8",
+            prop: "imageinfo",
+            iiprop: "url",
+            iiurlwidth: "1600",
+            format: "json",
+            origin: "*"
+        });
+
+        const response = await fetch(apiURL.toString());
+
+        if (!response.ok) {
+            throw new Error("تعذر الاتصال بمكتبة الصور.");
+        }
+
+        const data = await response.json();
+        const pages = Object.values(data.query?.pages || {});
+
+        const imagePage = pages.find(page => {
+            const info = page.imageinfo?.[0];
+            const url = info?.thumburl || info?.url;
+            return url && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(url);
+        });
+
+        if (!imagePage) {
+            throw new Error("لم يتم العثور على صورة مناسبة.");
+        }
+
+        const imageURL =
+            imagePage.imageinfo[0].thumburl ||
+            imagePage.imageinfo[0].url;
+
+        const imageResponse = await fetch(imageURL);
+
+        if (!imageResponse.ok) {
+            throw new Error("تعذر تحميل الصورة.");
+        }
+
+        const blob = await imageResponse.blob();
+
+        return await createImageBitmap(blob);
+    }
+
+    // كتابة النص فوق الصورة
+    function wrapText(ctx, text, maxWidth) {
+        const words = text.split(/\s+/);
+        const lines = [];
+        let line = "";
+
+        for (const word of words) {
+            const test = line ? `${line} ${word}` : word;
+
+            if (ctx.measureText(test).width > maxWidth && line) {
+                lines.push(line);
+                line = word;
+            } else {
+                line = test;
+            }
+        }
+
+        if (line) lines.push(line);
+        return lines;
+    }
+
+    async function createSceneImage(scene, index, width, height) {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("تعذر إنشاء Canvas.");
+
+        let bitmap = null;
+
+        try {
+            setStatus(`🔎 البحث عن صورة المشهد ${index + 1}...`);
+            bitmap = await searchSceneImage(scene.text);
+        } catch (error) {
+            console.warn("Image search:", error);
+        }
+
+        // خلفية احتياطية إذا لم توجد صورة
+        if (bitmap) {
+            const scale = Math.max(
+                width / bitmap.width,
+                height / bitmap.height
+            );
+
+            const drawWidth = bitmap.width * scale;
+            const drawHeight = bitmap.height * scale;
+
+            ctx.drawImage(
+                bitmap,
+                (width - drawWidth) / 2,
+                (height - drawHeight) / 2,
+                drawWidth,
+                drawHeight
+            );
+
+            bitmap.close();
+        } else {
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, "#111827");
+            gradient.addColorStop(0.5, "#302044");
+            gradient.addColorStop(1, "#080808");
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = "#d6b76b";
+            ctx.font = "bold 35px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("AI VIDEO STUDIO PRO", width / 2, height * 0.25);
+        }
+
+        // طبقة داكنة لظهور النص
+        const overlay = ctx.createLinearGradient(
+            0, height * 0.35, 0, height
+        );
+
+        overlay.addColorStop(0, "rgba(0,0,0,0.05)");
+        overlay.addColorStop(0.45, "rgba(0,0,0,0.35)");
+        overlay.addColorStop(1, "rgba(0,0,0,0.85)");
+
+        ctx.fillStyle = overlay;
+        ctx.fillRect(0, 0, width, height);
+
+        // إطار ذهبي
+        ctx.strokeStyle = "#d6b76b";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(25, 25, width - 50, height - 50);
+
+        // عنوان الاستوديو
+        ctx.fillStyle = "#f1d28a";
+        ctx.font = "bold 25px Arial";
+        ctx.textAlign = "center";
+        ctx.direction = "ltr";
+        ctx.fillText("AI VIDEO STUDIO PRO", width / 2, height * 0.12);
+
+        // النص العربي
+        ctx.direction = "rtl";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff";
+
+        const fontSize = width > height ? 42 : 38;
+        ctx.font = `bold ${fontSize}px Cairo, Arial`;
+
+        const lines = wrapText(
+            ctx,
+            scene.text,
+            width * 0.82
+        ).slice(0, 7);
+
+        const lineHeight = fontSize * 1.6;
+        const startY = height * 0.68 -
+            ((lines.length - 1) * lineHeight) / 2;
+
+        // خلفية خفيفة للنص
+        ctx.shadowColor = "rgba(0,0,0,0.9)";
+        ctx.shadowBlur = 12;
+
+        lines.forEach((line, i) => {
+            ctx.fillText(
+                line,
+                width / 2,
+                startY + i * lineHeight,
+                width * 0.84
+            );
+        });
+
+        ctx.shadowBlur = 0;
+
+        ctx.direction = "ltr";
+        ctx.fillStyle = "#e4c477";
+        ctx.font = "20px Arial";
+        ctx.fillText(
+            `SCENE ${index + 1}`,
+            width / 2,
+            height * 0.92
+        );
+
+        const blob = await new Promise(resolve =>
+            canvas.toBlob(resolve, "image/png")
+        );
+
+        if (!blob) throw new Error("تعذر إنشاء صورة المشهد.");
+
+        return new Uint8Array(await blob.arrayBuffer());
+    }
+
+    // تقسيم السكريبت
     generateButton.addEventListener("click", () => {
         const text = scriptInput.value.trim();
 
@@ -116,16 +331,16 @@ document.addEventListener("DOMContentLoaded", () => {
         scenes = text
             .split(/\n+|(?<=[.!؟?])\s+/)
             .map(part => part.trim())
-            .filter(part => part.length > 0);
+            .filter(part => part.length > 0)
+            .map(part => ({ text: part, image: null }));
 
         clearDownload();
         renderScenes();
         setProgress(0);
 
-        setStatus(`✅ تم إنشاء ${scenes.length} مشهد. واجد للتصدير.`);
+        setStatus(`✅ تم إنشاء ${scenes.length} مشهد.`);
     });
 
-    // مسح السكريبت
     clearButton.addEventListener("click", () => {
         if (exporting) return;
 
@@ -135,133 +350,12 @@ document.addEventListener("DOMContentLoaded", () => {
         clearDownload();
         renderScenes();
         setProgress(0);
-
         setStatus("تم مسح السكريبت والمشاهد.");
     });
 
     durationInput.addEventListener("change", renderScenes);
 
-    // تقسيم النص إلى أسطر
-    function wrapText(context, text, maxWidth) {
-        const words = text.split(/\s+/);
-        const lines = [];
-        let line = "";
-
-        for (const word of words) {
-            const testLine = line ? `${line} ${word}` : word;
-
-            if (context.measureText(testLine).width > maxWidth && line) {
-                lines.push(line);
-                line = word;
-            } else {
-                line = testLine;
-            }
-        }
-
-        if (line) lines.push(line);
-
-        return lines;
-    }
-
-    // إنشاء صورة لكل مشهد
-    async function createSceneImage(scene, index, width, height) {
-        const canvas = document.createElement("canvas");
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) {
-            throw new Error("المتصفح لم يتمكن من إنشاء Canvas.");
-        }
-
-        const gradient = ctx.createLinearGradient(0, 0, width, height);
-        gradient.addColorStop(0, "#111827");
-        gradient.addColorStop(0.5, "#302044");
-        gradient.addColorStop(1, "#080808");
-
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, width, height);
-
-        // ديكور الإضاءة
-        ctx.globalAlpha = 0.12;
-        ctx.fillStyle = "#d6ad55";
-
-        ctx.beginPath();
-        ctx.arc(width * 0.15, height * 0.2, width * 0.18, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(width * 0.85, height * 0.8, width * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.globalAlpha = 1;
-
-        // الإطار الذهبي
-        ctx.strokeStyle = "#c9a34d";
-        ctx.lineWidth = 4;
-        ctx.strokeRect(35, 35, width - 70, height - 70);
-
-        // اسم الاستوديو
-        ctx.fillStyle = "#d6b76b";
-        ctx.font = "bold 25px Cairo, Arial";
-        ctx.textAlign = "center";
-        ctx.direction = "ltr";
-        ctx.fillText("AI VIDEO STUDIO PRO", width / 2, height * 0.22);
-
-        // رقم المشهد
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 24px Cairo, Arial";
-        ctx.fillText(`SCENE ${index + 1}`, width / 2, height * 0.32);
-
-        // نص المشهد
-        ctx.direction = "rtl";
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#ffffff";
-
-        const fontSize = width > height ? 42 : 38;
-        ctx.font = `bold ${fontSize}px Cairo, Arial`;
-
-        const maxWidth = width * 0.78;
-        const lines = wrapText(ctx, scene, maxWidth);
-        const visibleLines = lines.slice(0, 8);
-        const lineHeight = width > height ? 65 : 58;
-
-        const startY = height / 2 -
-            ((visibleLines.length - 1) * lineHeight) / 2;
-
-        visibleLines.forEach((line, lineIndex) => {
-            ctx.fillText(
-                line,
-                width / 2,
-                startY + lineIndex * lineHeight,
-                maxWidth
-            );
-        });
-
-        // التذييل
-        ctx.direction = "ltr";
-        ctx.fillStyle = "#d6b76b";
-        ctx.font = "20px Cairo, Arial";
-        ctx.fillText(
-            "CREATED WITH AI VIDEO STUDIO PRO",
-            width / 2,
-            height * 0.9
-        );
-
-        const blob = await new Promise(resolve => {
-            canvas.toBlob(resolve, "image/png");
-        });
-
-        if (!blob) {
-            throw new Error("تعذر إنشاء صورة المشهد.");
-        }
-
-        return new Uint8Array(await blob.arrayBuffer());
-    }
-
-    // تصدير الفيديو
+    // تصدير الفيديو السينمائي
     async function exportVideo() {
         if (exporting) return;
 
@@ -272,23 +366,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const ffmpeg = window.videoFFmpeg;
 
-        if (
-            !ffmpeg ||
-            !window.videoFFmpegLoaded ||
-            typeof ffmpeg.exec !== "function"
-        ) {
-            setStatus(
-                "⚠️ محرك FFmpeg غير جاهز. انتقل إلى قسم قص الفيديو واضغط تحميل محرك المونتاج."
-            );
+        if (!ffmpeg || !window.videoFFmpegLoaded ||
+            typeof ffmpeg.exec !== "function") {
+            setStatus("⚠️ محرك FFmpeg غير جاهز. حمّلو من قسم قص الفيديو أولاً.");
+            return;
+        }
+
+        if (window.videoFFmpegBusy) {
+            setStatus("⏳ FFmpeg مشغول بأداة أخرى. انتظر حتى تنتهي.");
             return;
         }
 
         exporting = true;
+        window.videoFFmpegBusy = true;
         exportButton.disabled = true;
+
         clearDownload();
         setProgress(0);
 
-        const duration = Number(durationInput.value);
+        const duration = Math.max(
+            2,
+            Number(durationInput.value) || 5
+        );
+
         const format = formatInput ? formatInput.value : "16:9";
 
         const dimensions = {
@@ -297,18 +397,19 @@ document.addEventListener("DOMContentLoaded", () => {
             "1:1": [720, 720]
         };
 
-        const [width, height] = dimensions[format] || dimensions["16:9"];
+        const [width, height] =
+            dimensions[format] || dimensions["16:9"];
 
         const createdFiles = [];
+        const videoFiles = [];
 
         try {
-            setStatus("⏳ جاري تجهيز الفيديو...");
+            setStatus("🎬 بدء إعداد الفيديو السينمائي...");
 
+            // إنشاء صورة وفيديو لكل مشهد
             for (let i = 0; i < scenes.length; i++) {
-                const imageName = `scene_${i}.png`;
-                const videoName = `scene_${i}.mp4`;
-
-                setStatus(`🎨 إنشاء صورة المشهد ${i + 1} من ${scenes.length}...`);
+                const imageName = `cinema_scene_${i}.png`;
+                const videoName = `cinema_scene_${i}.mp4`;
 
                 const imageData = await createSceneImage(
                     scenes[i],
@@ -320,14 +421,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 await ffmpeg.writeFile(imageName, imageData);
                 createdFiles.push(imageName);
 
-                setStatus(`🎬 تحويل المشهد ${i + 1} إلى فيديو...`);
+                setStatus(
+                    `🎥 إضافة الحركة السينمائية للمشهد ${i + 1}/${scenes.length}...`
+                );
+
+                // حركة Zoom تدريجية داخل الصورة
+                const frames = duration * FPS;
+
+                const zoomFilter =
+                    `zoompan=z='min(zoom+0.0015,1.12)'` +
+                    `:d=${frames}:s=${width}x${height}:fps=${FPS},` +
+                    `setsar=1,format=yuv420p`;
 
                 const result = await ffmpeg.exec([
                     "-loop", "1",
-                    "-framerate", "30",
+                    "-framerate", String(FPS),
                     "-i", imageName,
+                    "-vf", zoomFilter,
                     "-t", String(duration),
-                    "-r", "30",
+                    "-r", String(FPS),
                     "-c:v", "libx264",
                     "-preset", "ultrafast",
                     "-pix_fmt", "yuv420p",
@@ -338,91 +450,124 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (result !== 0) {
                     throw new Error(
-                        `FFmpeg فشل في إنشاء المشهد ${i + 1}. تحقق من دعم libx264 في نسخة المحرك.`
+                        `فشل إنشاء المشهد ${i + 1}. تحقق من دعم libx264 وzoompan.`
                     );
                 }
 
                 createdFiles.push(videoName);
+                videoFiles.push(videoName);
 
                 setProgress(
-                    Math.round(((i + 1) / scenes.length) * 75)
+                    Math.round(((i + 1) / scenes.length) * 65)
                 );
             }
 
-            // إنشاء قائمة المشاهد
-            const concatContent = scenes
-                .map((_, index) => `file 'scene_${index}.mp4'`)
-                .join("\n");
+            // دمج المشاهد مع انتقالات Crossfade
+            setStatus("✨ إضافة الانتقالات السينمائية بين المشاهد...");
 
-            await ffmpeg.writeFile(
-                "scenes_list.txt",
-                new TextEncoder().encode(concatContent)
+            let finalInputArgs = [];
+            let filterGraph = "";
+            let finalVideoLabel = "";
+
+            if (videoFiles.length === 1) {
+                finalInputArgs = ["-i", videoFiles[0]];
+                finalVideoLabel = "0:v";
+            } else {
+                videoFiles.forEach(file => {
+                    finalInputArgs.push("-i", file);
+                });
+
+                let previousLabel = "0:v";
+
+                for (let i = 1; i < videoFiles.length; i++) {
+                    const outputLabel = `v${i}`;
+                    const offset = duration * i - TRANSITION * i;
+
+                    filterGraph +=
+                        `[${previousLabel}][${i}:v]` +
+                        `xfade=transition=fade:` +
+                        `duration=${TRANSITION}:` +
+                        `offset=${offset.toFixed(3)}` +
+                        `[${outputLabel}];`;
+
+                    previousLabel = outputLabel;
+                }
+
+                finalVideoLabel = previousLabel;
+                filterGraph = filterGraph.replace(/;$/, "");
+            }
+
+            const outputName = "AI-CINEMATIC-VIDEO.mp4";
+
+            const mergeArgs = [
+                ...finalInputArgs
+            ];
+
+            if (videoFiles.length > 1) {
+                mergeArgs.push("-filter_complex", filterGraph);
+            }
+
+            mergeArgs.push(
+                "-map", `[${finalVideoLabel}]`,
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                outputName
             );
 
-            createdFiles.push("scenes_list.txt");
-
-            setStatus("⏳ جاري دمج المشاهد...");
-
-            const mergeResult = await ffmpeg.exec([
-                "-f", "concat",
-                "-safe", "0",
-                "-i", "scenes_list.txt",
-                "-c", "copy",
-                "-movflags", "+faststart",
-                "AI-TEXT-VIDEO.mp4"
-            ]);
+            const mergeResult = await ffmpeg.exec(mergeArgs);
 
             if (mergeResult !== 0) {
-                throw new Error("فشل دمج المشاهد في فيديو واحد.");
+                throw new Error(
+                    "فشل دمج المشاهد. ربما نسخة FFmpeg لا تدعم xfade."
+                );
             }
+
+            createdFiles.push(outputName);
 
             setProgress(90);
-            setStatus("📦 جاري تجهيز ملف التحميل...");
+            setStatus("📦 تجهيز ملف MP4 للتحميل...");
 
-            const outputData = await ffmpeg.readFile("AI-TEXT-VIDEO.mp4");
+            const outputData = await ffmpeg.readFile(outputName);
 
-            if (!outputData || outputData.length === 0) {
-                throw new Error("ملف الفيديو الناتج فارغ.");
+            if (!outputData || !outputData.length) {
+                throw new Error("ملف الفيديو فارغ.");
             }
 
-            const videoBlob = new Blob(
+            const blob = new Blob(
                 [outputData],
                 { type: "video/mp4" }
             );
 
-            outputURL = URL.createObjectURL(videoBlob);
+            outputURL = URL.createObjectURL(blob);
 
             downloadLink.href = outputURL;
-            downloadLink.download = "AI-TEXT-VIDEO.mp4";
+            downloadLink.download = "AI-CINEMATIC-VIDEO.mp4";
             downloadLink.hidden = false;
 
             setProgress(100);
-            setStatus("✅ تم إنشاء الفيديو بنجاح! اضغط على تحميل الفيديو.");
+            setStatus(
+                "✅ الفيديو السينمائي واجد! حمّلو وجربو."
+            );
 
         } catch (error) {
-            console.error("Text to Video Export Error:", error);
+            console.error("Cinematic Video Error:", error);
 
             setProgress(0);
-
             setStatus(
-                "❌ خطأ أثناء التصدير: " +
-                (error.message || "خطأ غير معروف")
+                "❌ خطأ: " + (error.message || "خطأ غير معروف")
             );
 
         } finally {
             for (const file of createdFiles) {
                 try {
                     await ffmpeg.deleteFile(file);
-                } catch (error) {
-                    console.warn("تعذر حذف الملف المؤقت:", file, error);
-                }
+                } catch (_) {}
             }
 
-            try {
-                await ffmpeg.deleteFile("AI-TEXT-VIDEO.mp4");
-            } catch (_) {}
-
             exporting = false;
+            window.videoFFmpegBusy = false;
             exportButton.disabled = false;
         }
     }
