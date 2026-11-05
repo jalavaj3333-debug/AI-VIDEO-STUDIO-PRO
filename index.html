@@ -13,7 +13,6 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
@@ -146,7 +145,7 @@
             </div>
         </section>
 
-        <!-- TEXT TO VIDEO STUDIO PRO -->
+        <!-- TEXT TO VIDEO STUDIO PRO: ONLY ONE INSTANCE -->
         <section class="section" id="text-to-video">
 
             <div class="section-heading">
@@ -238,8 +237,8 @@
                     <h3>🚀 إنشاء الفيديو</h3>
 
                     <p>
-                        جهّز المشاهد والصور ثم ركّبها في فيديو واحد
-                        باستعمال محرك المونتاج.
+                        جهّز المشاهد ثم ركّبها في فيديو واحد
+                        باستعمال محرك المونتاج FFmpeg.
                     </p>
 
                     <button type="button" id="exportTextVideo">
@@ -260,79 +259,6 @@
 
             </div>
         </section>
-        <!-- TEXT TO VIDEO STUDIO -->
-<section class="section" id="text-to-video">
-    <div class="section-heading">
-        <div>
-            <h2>✦ Text to Video Studio Pro</h2>
-            <p>حوّل السكريبت ديالك إلى مشاهد قابلة للتعديل.</p>
-        </div>
-    </div>
-
-    <div class="text-video-studio">
-        <div class="text-video-panel">
-            <h3>📝 كتابة السكريبت</h3>
-
-            <textarea id="videoScript" rows="8"
-                placeholder="كتب القصة ديالك هنا..."></textarea>
-
-            <div class="script-actions">
-                <button type="button" id="generateScenes">
-                    ✨ تقسيم النص إلى مشاهد
-                </button>
-                <button type="button" id="clearScript">
-                    🗑 مسح النص
-                </button>
-            </div>
-
-            <div class="scene-settings">
-                <label for="sceneDuration">مدة كل مشهد</label>
-                <select id="sceneDuration">
-                    <option value="3">3 ثوانٍ</option>
-                    <option value="5" selected>5 ثوانٍ</option>
-                    <option value="8">8 ثوانٍ</option>
-                    <option value="10">10 ثوانٍ</option>
-                </select>
-
-                <label for="sceneFormat">شكل الفيديو</label>
-                <select id="sceneFormat">
-                    <option value="16:9">أفقي 16:9</option>
-                    <option value="9:16">عمودي 9:16</option>
-                    <option value="1:1">مربع 1:1</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="text-video-panel">
-            <h3>🎬 مشاهد الفيديو</h3>
-            <span id="sceneCount">0 مشهد</span>
-
-            <div id="sceneList" class="scene-list"></div>
-
-            <div class="scene-summary">
-                المدة الإجمالية:
-                <strong id="sceneTotalDuration">00:00</strong>
-            </div>
-        </div>
-
-        <div class="text-video-export">
-            <h3>🚀 إنشاء الفيديو</h3>
-            <button type="button" id="exportTextVideo">
-                🎬 تركيب وتصدير الفيديو
-            </button>
-
-            <div class="text-video-progress">
-                <div id="textVideoProgress"></div>
-            </div>
-
-            <p id="textVideoStatus">في انتظار إعداد المشاهد.</p>
-
-            <a id="textVideoDownload" hidden download="AI-TEXT-VIDEO.mp4">
-                ⬇ تحميل الفيديو
-            </a>
-        </div>
-    </div>
-</section>
 
         <!-- VIDEO WORKSPACE -->
         <section class="section workspace" id="editor">
@@ -578,7 +504,6 @@
 
                     <p id="voiceName">التعليق الصوتي اختياري</p>
 
-                    <!-- MICROPHONE RECORDER -->
                     <div class="mic-recorder" id="micRecorder">
 
                         <div class="mic-title">
@@ -670,7 +595,7 @@
 <script type="module" src="merge-editor.js"></script>
 <script src="audio-editor.js"></script>
 <script src="auto-montage.js"></script>
-<script src="text-to-video.js"></script>   
+<script src="text-to-video.js"></script>
 
 </body>
 </html>
