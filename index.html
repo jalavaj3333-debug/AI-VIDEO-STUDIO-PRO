@@ -1144,7 +1144,76 @@
             <p>CREATED FOR CREATORS ✦</p>
 
         </footer>
+<!-- TEXT TO VIDEO STUDIO -->
+<section id="text-to-video" class="text-video-studio">
 
+    <div class="text-video-header">
+        <span class="section-badge">AI VIDEO CREATOR</span>
+        <h2>🎬 Text to Video Studio</h2>
+        <p>حوّل النص ديالك إلى مشاهد فيديو بطريقة سهلة.</p>
+    </div>
+
+    <div class="text-video-panel">
+
+        <label for="videoScript">📝 اكتب السيناريو ديالك</label>
+
+        <textarea
+            id="videoScript"
+            rows="7"
+            placeholder="مثلاً: مشهد سينمائي لمدينة مراكش وقت الغروب..."
+        ></textarea>
+
+        <div class="script-actions">
+            <button type="button" id="generateScenes">
+                ✨ إنشاء المشاهد
+            </button>
+
+            <button type="button" id="clearScript">
+                🗑 مسح النص
+            </button>
+        </div>
+
+        <div class="scene-settings">
+            <div>
+                <label for="sceneStyle">ستايل الفيديو</label>
+                <select id="sceneStyle">
+                    <option value="cinematic">Cinematic</option>
+                    <option value="realistic">Realistic</option>
+                    <option value="animation">Animation</option>
+                    <option value="documentary">Documentary</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="sceneDuration">مدة كل مشهد</label>
+                <select id="sceneDuration">
+                    <option value="5">5 ثواني</option>
+                    <option value="8" selected>8 ثواني</option>
+                    <option value="10">10 ثواني</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="scene-list" id="sceneList">
+            <p>المشاهد ديالك غادي يظهرو هنا.</p>
+        </div>
+
+        <div class="text-video-export">
+            <button type="button" id="exportTextVideo">
+                🎥 تجهيز الفيديو
+            </button>
+
+            <progress id="textVideoProgress" value="0" max="100"></progress>
+
+            <p id="textVideoStatus">في انتظار السيناريو...</p>
+
+            <a id="textVideoDownload" hidden download="AI-Video.mp4">
+                تحميل الفيديو
+            </a>
+        </div>
+
+    </div>
+</section>
     </main>
 
 </div>
