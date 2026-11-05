@@ -2,97 +2,107 @@
 import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js";
 import { fetchFile, toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js";
 
-// =====================================
-// AI VIDEO STUDIO PRO - SHARED FFMPEG ENGINE
-// =====================================
+// AI VIDEO STUDIO PRO - FIXED VIDEO TRIMMER
 
-const $ = (id) => document.getElementById(id);
+const input = document.getElementById("trimInput");
+const previewBox = document.getElementById("trimPreview");
+const loadButton = document.getElementById("loadFFmpeg");
+const exportButton = document.getElementById("exportTrim");
+const status = document.getElementById("trimStatus");
 
-// HTML ELEMENTS
-const input = $("trimInput");
-const preview = $("trimPreview");
-const fileName = $("trimFileName");
-const startInput = $("trimStart");
-const endInput = $("trimEnd");
-const loadButton = $("loadFFmpeg");
-const exportButton = $("exportTrim");
-const status = $("trimStatus");
-const progressBar = $("trimProgressBar");
-const downloadLink = $("downloadTrim");
-
-// CHECK ELEMENTS
-if (
-    !input || !preview || !fileName ||
-    !startInput || !endInput ||
-    !loadButton || !exportButton ||
-    !status || !progressBar || !downloadLink
-) {
-    console.error("Video Trimmer: HTML elements are missing.");
+if (!input || !previewBox || !loadButton || !exportButton || !status) {
+    console.error("Video Trimmer: HTML elements missing.");
 } else {
-
-    // =====================================
-    // SHARED ENGINE STATE
-    // =====================================
-
     let ffmpeg = null;
     let loaded = false;
-    let loading = false;
-    let processing = false;
     let selectedFile = null;
-
     let inputURL = null;
     let outputURL = null;
-    let loadPromise = null;
+    let processing = false;
 
-    // Share the engine with other studio tools
-    window.videoFFmpeg = null;
-    window.videoFFmpegLoaded = false;
-    window.videoFFmpegLoading = false;
-    window.videoFFmpegBusy = false;
+    // Create missing interface elements automatically
+    previewBox.innerHTML = "";
 
-    // =====================================
-    // HELPERS
-    // =====================================
+    const video = document.createElement("video");
+    video.controls = true;
+    video.playsInline = true;
+    video.style.width = "100%";
+    video.style.maxHeight = "400px";
+    video.style.objectFit = "contain";
+    previewBox.appendChild(video);
+
+    const controls = document.createElement("div");
+    controls.style.display = "grid";
+    controls.style.gridTemplateColumns = "repeat(2,minmax(0,1fr))";
+    controls.style.gap = "12px";
+    controls.style.marginTop = "15px";
+
+    function makeTimeInput(id, label) {
+        const wrapper = document.createElement("label");
+        wrapper.textContent = label;
+        wrapper.style.display = "block";
+        wrapper.style.color = "#d8ad55";
+        wrapper.style.fontSize = "13px";
+
+        const field = document.createElement("input");
+        field.type = "number";
+        field.id = id;
+        field.min = "0";
+        field.step = "0.1";
+        field.value = "0";
+        field.style.width = "100%";
+        field.style.padding = "10px";
+        field.style.marginTop = "7px";
+        field.style.background = "#111";
+        field.style.color = "#fff";
+        field.style.border = "1px solid #705322";
+        field.style.borderRadius = "8px";
+
+        wrapper.appendChild(field);
+        return { wrapper, field };
+    }
+
+    const start = makeTimeInput("trimStart", "وقت البداية (ثانية)");
+    const end = makeTimeInput("trimEnd", "وقت النهاية (ثانية)");
+
+    controls.append(start.wrapper, end.wrapper);
+    previewBox.after(controls);
+
+    const progress = document.createElement("div");
+    progress.style.height = "8px";
+    progress.style.background = "#292929";
+    progress.style.borderRadius = "20px";
+    progress.style.marginTop = "15px";
+    progress.style.overflow = "hidden";
+
+    const progressBar = document.createElement("div");
+    progressBar.style.width = "0%";
+    progressBar.style.height = "100%";
+    progressBar.style.background = "linear-gradient(90deg,#9b702b,#f4d58a)";
+    progress.appendChild(progressBar);
+
+    status.after(progress);
+
+    const download = document.createElement("a");
+    download.textContent = "⬇ تحميل الفيديو بعد القص";
+    download.hidden = true;
+    download.style.display = "inline-block";
+    download.style.marginTop = "15px";
+    download.style.color = "#f4d58a";
+    download.style.fontWeight = "bold";
+    status.after(download);
 
     function setStatus(message) {
         status.textContent = message;
     }
 
     function setProgress(value) {
-        const percentage = Math.max(0, Math.min(100, value));
-        progressBar.style.width = percentage + "%";
+        progressBar.style.width = Math.max(0, Math.min(100, value)) + "%";
     }
 
-    function clearDownload() {
-        downloadLink.hidden = true;
-        downloadLink.removeAttribute("href");
-
-        if (outputURL) {
-            URL.revokeObjectURL(outputURL);
-            outputURL = null;
-        }
-    }
-
-    function updateButtons() {
-        exportButton.disabled = !loaded || !selectedFile || processing;
-        loadButton.disabled = loaded || loading || processing;
-    }
-
-    function getSafeExtension(filename) {
-        const extension = filename.split(".").pop().toLowerCase();
-
-        return /^[a-z0-9]+$/.test(extension)
-            ? extension
-            : "mp4";
-    }
-
-    // =====================================
-    // SELECT VIDEO
-    // =====================================
-
+    // Select video
     input.addEventListener("change", () => {
         const file = input.files?.[0];
-
         if (!file) return;
 
         if (!file.type.startsWith("video/")) {
@@ -103,227 +113,134 @@ if (
 
         selectedFile = file;
 
-        if (inputURL) {
-            URL.revokeObjectURL(inputURL);
+        if (inputURL) URL.revokeObjectURL(inputURL);
+        if (outputURL) {
+            URL.revokeObjectURL(outputURL);
+            outputURL = null;
         }
-
-        clearDownload();
 
         inputURL = URL.createObjectURL(file);
+        video.src = inputURL;
+        download.hidden = true;
 
-        preview.onloadedmetadata = () => {
-            startInput.value = "0";
-            endInput.value = preview.duration.toFixed(1);
-            endInput.max = preview.duration;
-
-            setStatus(
-                "مدة الفيديو: " +
-                preview.duration.toFixed(2) +
-                " ثانية"
-            );
+        video.onloadedmetadata = () => {
+            start.field.value = "0";
+            end.field.value = video.duration.toFixed(1);
+            end.field.max = video.duration;
+            setStatus("تم تحميل الفيديو. المدة: " + video.duration.toFixed(1) + " ثانية.");
+            exportButton.disabled = !loaded;
         };
 
-        preview.onerror = () => {
-            setStatus("تعذر فتح الفيديو للمعاينة.");
+        video.onerror = () => {
+            setStatus("تعذر فتح الفيديو. جرب ملف MP4.");
         };
-
-        preview.src = inputURL;
-        fileName.textContent = file.name;
-
-        updateButtons();
     });
 
-    // =====================================
-    // LOAD FFMPEG ENGINE
-    // =====================================
-
-    async function loadFFmpegEngine() {
-
-        if (loaded && ffmpeg) {
-            return ffmpeg;
-        }
-
-        if (loadPromise) {
-            return loadPromise;
-        }
-
-        loading = true;
-        window.videoFFmpegLoading = true;
-        updateButtons();
-
-        loadPromise = (async () => {
-            try {
-                setStatus("جاري تجهيز محرك المونتاج...");
-                setProgress(5);
-
-                console.log("FFmpeg: Creating engine");
-
-                const engine = new FFmpeg();
-
-                engine.on("log", ({ message }) => {
-                    console.log("[FFmpeg]", message);
-                });
-
-                engine.on("progress", ({ progress }) => {
-                    if (processing) {
-                        setProgress(Math.round(progress * 100));
-                    }
-                });
-
-                const coreBaseURL =
-                    "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
-
-                // Local worker
-                const classWorkerURL = new URL(
-                    "./ffmpeg/worker.js",
-                    window.location.href
-                ).href;
-
-                console.log("FFmpeg worker:", classWorkerURL);
-
-                setProgress(20);
-                setStatus("جاري تحميل ملفات FFmpeg...");
-
-                const coreURL = await toBlobURL(
-                    `${coreBaseURL}/ffmpeg-core.js`,
-                    "text/javascript"
-                );
-
-                setProgress(45);
-
-                const wasmURL = await toBlobURL(
-                    `${coreBaseURL}/ffmpeg-core.wasm`,
-                    "application/wasm"
-                );
-
-                setProgress(70);
-                setStatus("جاري تشغيل محرك المونتاج...");
-
-                await engine.load({
-                    classWorkerURL,
-                    coreURL,
-                    wasmURL
-                });
-
-                ffmpeg = engine;
-                loaded = true;
-
-                // Publish the ready engine
-                window.videoFFmpeg = engine;
-                window.videoFFmpegLoaded = true;
-
-                console.log("FFmpeg engine loaded successfully.");
-
-                setProgress(100);
-                setStatus("✓ محرك المونتاج جاهز!");
-
-                loadButton.textContent = "✓ المحرك جاهز";
-
-                return engine;
-
-            } catch (error) {
-                console.error("FFmpeg Loading Error:", error);
-
-                if (ffmpeg) {
-                    try {
-                        ffmpeg.terminate();
-                    } catch (_) {}
-                }
-
-                ffmpeg = null;
-                loaded = false;
-
-                window.videoFFmpeg = null;
-                window.videoFFmpegLoaded = false;
-
-                setProgress(0);
-
-                setStatus(
-                    "تعذر تحميل المحرك: " +
-                    (error?.message || String(error))
-                );
-
-                throw error;
-
-            } finally {
-                loading = false;
-                window.videoFFmpegLoading = false;
-                loadPromise = null;
-                updateButtons();
-            }
-        })();
-
-        return loadPromise;
-    }
-
+    // Load FFmpeg
     loadButton.addEventListener("click", async () => {
+        if (loaded || processing) return;
+
         try {
-            await loadFFmpegEngine();
+            loadButton.disabled = true;
+            setStatus("جاري تحميل محرك التحرير...");
+            setProgress(5);
+
+            ffmpeg = new FFmpeg();
+
+            ffmpeg.on("log", ({ message }) => {
+                console.log("[FFmpeg]", message);
+            });
+
+            ffmpeg.on("progress", ({ progress }) => {
+                setProgress(Math.round(progress * 100));
+            });
+
+            const baseURL =
+                "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
+
+            setStatus("جاري تحميل ملفات المحرك...");
+
+            const coreURL = await toBlobURL(
+                `${baseURL}/ffmpeg-core.js`,
+                "text/javascript"
+            );
+
+            setProgress(40);
+
+            const wasmURL = await toBlobURL(
+                `${baseURL}/ffmpeg-core.wasm`,
+                "application/wasm"
+            );
+
+            setProgress(75);
+            setStatus("جاري تشغيل المحرك...");
+
+            await ffmpeg.load({ coreURL, wasmURL });
+
+            loaded = true;
+            window.videoFFmpeg = ffmpeg;
+            window.videoFFmpegLoaded = true;
+
+            setProgress(100);
+            setStatus("✓ محرك التحرير جاهز!");
+            loadButton.textContent = "✓ المحرك جاهز";
+            exportButton.disabled = !selectedFile;
+
         } catch (error) {
-            console.error(error);
+            console.error("FFmpeg loading error:", error);
+            setStatus("فشل تحميل المحرك: " + (error.message || error));
+            setProgress(0);
+            loadButton.disabled = false;
         }
     });
 
-    // =====================================
-    // EXPORT TRIMMED VIDEO
-    // =====================================
-
+    // Export trimmed video
     exportButton.addEventListener("click", async () => {
-
-        if (!loaded || !ffmpeg || !selectedFile || processing) {
+        if (!loaded || !selectedFile || processing) {
+            setStatus("اختار فيديو وحمّل محرك التحرير أولا.");
             return;
         }
 
-        if (window.videoFFmpegBusy) {
-            setStatus("⚠️ محرك FFmpeg مستعمل حالياً من أداة أخرى.");
-            return;
-        }
-
-        const start = Number(startInput.value);
-        const end = Number(endInput.value);
-        const duration = preview.duration;
+        const from = Number(start.field.value);
+        const to = Number(end.field.value);
 
         if (
-            !Number.isFinite(start) ||
-            !Number.isFinite(end) ||
-            !Number.isFinite(duration) ||
-            start < 0 ||
-            end <= start ||
-            end > duration
+            !Number.isFinite(from) ||
+            !Number.isFinite(to) ||
+            from < 0 ||
+            to <= from ||
+            to > video.duration
         ) {
-            alert("تأكد من وقت البداية والنهاية.");
+            setStatus("تأكد من وقت البداية والنهاية.");
             return;
         }
-
-        const inputName =
-            `source.${getSafeExtension(selectedFile.name)}`;
-
-        const outputName = "AI_VIDEO_FINAL.mp4";
 
         try {
             processing = true;
-            window.videoFFmpegBusy = true;
-
-            updateButtons();
-            clearDownload();
+            exportButton.disabled = true;
+            loadButton.disabled = true;
+            download.hidden = true;
             setProgress(0);
 
             setStatus("جاري تجهيز الفيديو...");
 
+            const extension = selectedFile.name.split(".").pop().toLowerCase();
+            const safeExtension = /^[a-z0-9]+$/.test(extension) ? extension : "mp4";
+
+            const inputName = `source.${safeExtension}`;
+            const outputName = "AI_VIDEO_FINAL.mp4";
+
             await ffmpeg.deleteFile(inputName).catch(() => {});
             await ffmpeg.deleteFile(outputName).catch(() => {});
 
-            await ffmpeg.writeFile(
-                inputName,
-                await fetchFile(selectedFile)
-            );
+            await ffmpeg.writeFile(inputName, await fetchFile(selectedFile));
 
-            setStatus("جاري قص الفيديو وتحويله إلى MP4...");
+            setStatus("جاري قص الفيديو...");
 
             const result = await ffmpeg.exec([
-                "-ss", String(start),
+                "-ss", String(from),
                 "-i", inputName,
-                "-t", String(end - start),
+                "-t", String(to - from),
                 "-map", "0:v:0",
                 "-map", "0:a?",
                 "-c:v", "libx264",
@@ -336,80 +253,38 @@ if (
             ]);
 
             if (result !== 0) {
-                throw new Error("FFmpeg failed to export the video.");
+                throw new Error("FFmpeg export failed.");
             }
-
-            setStatus("جاري تجهيز ملف التحميل...");
 
             const data = await ffmpeg.readFile(outputName);
+            const blob = new Blob([data], { type: "video/mp4" });
 
-            if (!data || data.length === 0) {
-                throw new Error("ملف الفيديو الناتج فارغ.");
-            }
-
-            const blob = new Blob(
-                [data],
-                { type: "video/mp4" }
-            );
-
+            if (outputURL) URL.revokeObjectURL(outputURL);
             outputURL = URL.createObjectURL(blob);
 
-            downloadLink.href = outputURL;
-            downloadLink.download = "AI-VIDEO-TRIMMED.mp4";
-            downloadLink.hidden = false;
+            download.href = outputURL;
+            download.download = "AI-VIDEO-TRIMMED.mp4";
+            download.hidden = false;
 
             setProgress(100);
-
-            setStatus(
-                "✓ تم تصدير الفيديو بنجاح! الحجم: " +
-                (blob.size / 1024 / 1024).toFixed(2) +
-                " MB"
-            );
+            setStatus("✓ تم قص الفيديو بنجاح!");
 
         } catch (error) {
-            console.error("Video Export Error:", error);
-
-            setProgress(0);
-
-            setStatus(
-                "خطأ أثناء التصدير: " +
-                (error?.message || String(error))
-            );
-
+            console.error("Video export error:", error);
+            setStatus("خطأ أثناء القص: " + (error.message || error));
         } finally {
-            try {
-                await ffmpeg.deleteFile(inputName);
-                await ffmpeg.deleteFile(outputName);
-            } catch (_) {}
-
             processing = false;
-            window.videoFFmpegBusy = false;
-
-            updateButtons();
+            exportButton.disabled = !loaded || !selectedFile;
+            loadButton.disabled = loaded;
         }
     });
-
-    // =====================================
-    // CLEANUP
-    // =====================================
 
     window.addEventListener("beforeunload", () => {
-
-        if (inputURL) {
-            URL.revokeObjectURL(inputURL);
-        }
-
-        if (outputURL) {
-            URL.revokeObjectURL(outputURL);
-        }
-
-        if (ffmpeg && loaded) {
-            ffmpeg.terminate();
-        }
-
+        if (inputURL) URL.revokeObjectURL(inputURL);
+        if (outputURL) URL.revokeObjectURL(outputURL);
+        if (ffmpeg && loaded) ffmpeg.terminate();
     });
 
-    updateButtons();
-
-    console.log("AI VIDEO STUDIO PRO - FFMPEG EDITOR READY");
+    exportButton.disabled = true;
+    console.log("AI VIDEO STUDIO PRO - TRIMMER READY");
 }
