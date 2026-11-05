@@ -2,52 +2,98 @@
 document.addEventListener("DOMContentLoaded", () => {
     const $ = id => document.getElementById(id);
 
+    // HTML elements الموجودة في index.html
     const scriptInput = $("videoScript");
     const generateButton = $("generateScenes");
     const clearButton = $("clearScript");
     const sceneList = $("sceneList");
-    const sceneCount = $("sceneCount");
+    const exportButton = $("exportVideo");
+
+    // إعدادات الفيديو الموجودة في HTML
+    const styleInput = $("videoStyle");
+    const ratioInput = $("videoRatio");
+    const languageInput = $("videoLanguage");
+
+    // عناصر اختيارية: الكود يشتغل حتى إلا ما كانوش موجودين
     const durationInput = $("sceneDuration");
-    const formatInput = $("sceneFormat");
-    const totalDuration = $("sceneTotalDuration");
-    const exportButton = $("exportTextVideo");
     const progressBar = $("textVideoProgress");
-    const status = $("textVideoStatus");
+    const statusElement = $("textVideoStatus");
     const downloadLink = $("textVideoDownload");
+    const sceneCount = $("sceneCount");
+    const totalDuration = $("sceneTotalDuration");
 
     if (
         !scriptInput ||
         !generateButton ||
         !clearButton ||
         !sceneList ||
-        !durationInput ||
-        !exportButton ||
-        !downloadLink
+        !exportButton
     ) {
-        console.error("Text to Video: عناصر HTML ناقصة.");
+        console.error("Text to Video: عناصر HTML الأساسية ناقصة.");
         return;
     }
 
     let scenes = [];
     let outputURL = null;
-    let exporting = false;
     let searching = false;
+    let exporting = false;
 
     const FPS = 30;
+    const DEFAULT_SCENE_DURATION = 5;
     const FADE_TIME = 0.6;
 
+    // ---------------------------------------
+    // STATUS AND PROGRESS
+    // ---------------------------------------
+
     function setStatus(message) {
-        if (status) status.textContent = message;
+        if (statusElement) {
+            statusElement.textContent = message;
+        }
+
+        console.log("[Text to Video]", message);
     }
 
     function setProgress(value) {
-        if (progressBar) {
-            progressBar.style.width =
-                `${Math.max(0, Math.min(100, value))}%`;
+        const percentage = Math.max(0, Math.min(100, value));
+
+        if (!progressBar) return;
+
+        if (progressBar.tagName === "PROGRESS") {
+            progressBar.value = percentage;
+        } else {
+            progressBar.style.width = `${percentage}%`;
         }
     }
 
+    function getSceneDuration() {
+        if (!durationInput) {
+            return DEFAULT_SCENE_DURATION;
+        }
+
+        const value = Number(durationInput.value);
+
+        if (!Number.isFinite(value) || value <= 0) {
+            return DEFAULT_SCENE_DURATION;
+        }
+
+        return Math.max(2, Math.min(30, value));
+    }
+
+    function formatTime(seconds) {
+        const safe = Math.max(0, Math.floor(seconds));
+        const minutes = Math.floor(safe / 60);
+        const remaining = safe % 60;
+
+        return (
+            `${String(minutes).padStart(2, "0")}:` +
+            `${String(remaining).padStart(2, "0")}`
+        );
+    }
+
     function clearDownload() {
+        if (!downloadLink) return;
+
         downloadLink.hidden = true;
         downloadLink.removeAttribute("href");
 
@@ -57,23 +103,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function formatTime(seconds) {
-        const safeSeconds = Math.max(0, Math.floor(seconds));
-        const minutes = Math.floor(safeSeconds / 60);
-        const remaining = safeSeconds % 60;
+    // ---------------------------------------
+    // SCRIPT PROCESSING
+    // ---------------------------------------
 
-        return (
-            `${String(minutes).padStart(2, "0")}:` +
-            `${String(remaining).padStart(2, "0")}`
-        );
-    }
-
-    function getSceneDuration() {
-        const value = Number(durationInput.value);
-
-        if (!Number.isFinite(value)) return 5;
-
-        return Math.max(2, Math.min(30, value));
+    function splitScript(text) {
+        return text
+            .split(/\n+|(?<=[.!؟?])\s+/)
+            .map(part => part.trim())
+            .filter(part => part.length > 0)
+            .map(part => ({
+                text: part,
+                image: null,
+                imageURL: null,
+                imageError: null
+            }));
     }
 
     function getSearchQuery(text) {
@@ -86,7 +130,10 @@ document.addEventListener("DOMContentLoaded", () => {
             .join(" ");
     }
 
-    // تحميل الصورة والتأكد أنها صالحة
+    // ---------------------------------------
+    // IMAGE LOADING
+    // ---------------------------------------
+
     function loadImage(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -95,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             img.onload = () => {
                 if (!img.naturalWidth || !img.naturalHeight) {
-                    reject(new Error("الصورة فارغة أو غير صالحة."));
+                    reject(new Error("الصورة غير صالحة."));
                     return;
                 }
 
@@ -110,7 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // البحث عن الصور في Wikimedia Commons
     async function searchSceneImage(text) {
         const query = getSearchQuery(text);
 
@@ -153,22 +199,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const candidates = pages
             .map(page => page.imageinfo?.[0])
-            .filter(info => {
-                if (!info) return false;
-
-                // نستعمل الصورة المصغرة حتى مع بعض ملفات SVG
-                return Boolean(info.thumburl || info.url);
-            });
+            .filter(info => info && (info.thumburl || info.url));
 
         if (!candidates.length) {
             throw new Error(`لم يتم العثور على صورة: ${query}`);
         }
 
-        // تجربة أكثر من صورة حتى نجد صورة قابلة للتحميل
         for (const info of candidates) {
             const url = info.thumburl || info.url;
-
-            if (!url) continue;
 
             try {
                 const image = await loadImage(url);
@@ -176,30 +214,38 @@ document.addEventListener("DOMContentLoaded", () => {
                 return {
                     image,
                     url,
-                    title: info.descriptionurl || "Wikimedia Commons"
+                    source: info.descriptionurl || ""
                 };
             } catch (error) {
-                console.warn("تعذر تحميل الصورة، تجربة صورة أخرى:", error);
+                console.warn("تعذر تحميل صورة، تجربة صورة أخرى:", error);
             }
         }
 
         throw new Error("تم العثور على صور ولكن تعذر تحميلها.");
     }
 
-    // عرض المشاهد
+    // ---------------------------------------
+    // SCENES DISPLAY
+    // ---------------------------------------
+
     function renderScenes() {
         sceneList.innerHTML = "";
 
         if (!scenes.length) {
-            sceneList.innerHTML = `
-                <div class="scene-empty">
-                    <span>🎞️</span>
-                    <p>كتب السكريبت واضغط على تقسيم النص إلى مشاهد.</p>
-                </div>
-            `;
+            const empty = document.createElement("p");
 
-            if (sceneCount) sceneCount.textContent = "0 مشهد";
-            if (totalDuration) totalDuration.textContent = "00:00";
+            empty.className = "empty-message";
+            empty.textContent = "المشاهد ديالك غادي يظهرو هنا.";
+
+            sceneList.appendChild(empty);
+
+            if (sceneCount) {
+                sceneCount.textContent = "0 مشهد";
+            }
+
+            if (totalDuration) {
+                totalDuration.textContent = "00:00";
+            }
 
             return;
         }
@@ -269,7 +315,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // تقسيم السكريبت والبحث عن الصور
+    // ---------------------------------------
+    // SEARCH IMAGES FOR ALL SCENES
+    // ---------------------------------------
+
     generateButton.addEventListener("click", async () => {
         if (searching || exporting) return;
 
@@ -281,16 +330,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        scenes = text
-            .split(/\n+|(?<=[.!؟?])\s+/)
-            .map(part => part.trim())
-            .filter(part => part.length > 0)
-            .map(part => ({
-                text: part,
-                image: null,
-                imageURL: null,
-                imageError: null
-            }));
+        scenes = splitScript(text);
 
         clearDownload();
         renderScenes();
@@ -298,6 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         searching = true;
         generateButton.disabled = true;
+        exportButton.disabled = true;
 
         let successful = 0;
 
@@ -308,7 +349,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
 
                 try {
-                    const result = await searchSceneImage(scenes[i].text);
+                    const result = await searchSceneImage(
+                        scenes[i].text
+                    );
 
                     scenes[i].image = result.image;
                     scenes[i].imageURL = result.url;
@@ -316,6 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     successful++;
                 } catch (error) {
                     console.error(`Scene ${i + 1}:`, error);
+
                     scenes[i].imageError =
                         error.message || "تعذر العثور على الصورة.";
                 }
@@ -333,7 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
             } else {
                 setStatus(
-                    `⚠️ تم العثور على ${successful} صورة من أصل ${scenes.length}. راجع المشاهد التي لم تنجح.`
+                    `⚠️ تم العثور على ${successful} صورة من أصل ${scenes.length}.`
                 );
             }
         } catch (error) {
@@ -342,10 +386,14 @@ document.addEventListener("DOMContentLoaded", () => {
         } finally {
             searching = false;
             generateButton.disabled = false;
+            exportButton.disabled = false;
         }
     });
 
-    // مسح المشروع
+    // ---------------------------------------
+    // CLEAR PROJECT
+    // ---------------------------------------
+
     clearButton.addEventListener("click", () => {
         if (exporting || searching) return;
 
@@ -359,9 +407,14 @@ document.addEventListener("DOMContentLoaded", () => {
         setStatus("تم مسح السكريبت والمشاهد.");
     });
 
-    durationInput.addEventListener("change", renderScenes);
+    if (durationInput) {
+        durationInput.addEventListener("change", renderScenes);
+    }
 
-    // تقسيم النص إلى أسطر
+    // ---------------------------------------
+    // TEXT WRAPPING
+    // ---------------------------------------
+
     function wrapText(ctx, text, maxWidth) {
         const words = text.split(/\s+/);
         const lines = [];
@@ -383,7 +436,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return lines;
     }
 
-    // تجهيز صورة المشهد
+    // ---------------------------------------
+    // CREATE IMAGE FOR VIDEO SCENE
+    // ---------------------------------------
+
     async function createSceneImage(scene, index, width, height) {
         if (!scene.image) {
             throw new Error(
@@ -420,7 +476,7 @@ document.addEventListener("DOMContentLoaded", () => {
             drawHeight
         );
 
-        // تدرج داكن خلف النص
+        // تدرج داكن
         const overlay = ctx.createLinearGradient(
             0,
             height * 0.35,
@@ -446,7 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
             height - 50
         );
 
-        // عنوان المشروع
+        // اسم الاستوديو
         ctx.fillStyle = "#f1d28a";
         ctx.font = "bold 25px Arial";
         ctx.textAlign = "center";
@@ -458,7 +514,7 @@ document.addEventListener("DOMContentLoaded", () => {
             height * 0.12
         );
 
-        // النص العربي
+        // النص
         ctx.direction = "rtl";
         ctx.fillStyle = "#ffffff";
 
@@ -503,7 +559,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return new Uint8Array(await blob.arrayBuffer());
     }
 
-    // تصدير الفيديو
+    // ---------------------------------------
+    // EXPORT VIDEO
+    // ---------------------------------------
+
     async function exportVideo() {
         if (exporting || searching) return;
 
@@ -512,7 +571,9 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const missingIndex = scenes.findIndex(scene => !scene.image);
+        const missingIndex = scenes.findIndex(
+            scene => !scene.image
+        );
 
         if (missingIndex !== -1) {
             setStatus(
@@ -541,6 +602,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         exporting = true;
         window.videoFFmpegBusy = true;
+
         exportButton.disabled = true;
         generateButton.disabled = true;
         clearButton.disabled = true;
@@ -548,12 +610,11 @@ document.addEventListener("DOMContentLoaded", () => {
         clearDownload();
         setProgress(0);
 
-        const requestedDuration = getSceneDuration();
-        const frames = Math.round(requestedDuration * FPS);
-        const duration = frames / FPS;
+        const duration = getSceneDuration();
+        const frames = Math.round(duration * FPS);
 
-        const format = formatInput
-            ? formatInput.value
+        const format = ratioInput
+            ? ratioInput.value
             : "16:9";
 
         const dimensions = {
@@ -572,7 +633,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const concatName = "cinema_scenes.txt";
 
         try {
-            // حذف ملف سابق إن وجد
             try {
                 await ffmpeg.deleteFile(outputName);
             } catch (_) {}
@@ -581,7 +641,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 await ffmpeg.deleteFile(concatName);
             } catch (_) {}
 
-            // إنشاء فيديو لكل مشهد
+            // انتظار تحميل الخطوط قبل الرسم
+            if (document.fonts?.ready) {
+                await document.fonts.ready;
+            }
+
+            // إنشاء مشاهد الفيديو
             for (let i = 0; i < scenes.length; i++) {
                 const imageName = `cinema_scene_${i}.png`;
                 const videoName = `cinema_scene_${i}.mp4`;
@@ -598,11 +663,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
 
                 await ffmpeg.writeFile(imageName, imageData);
-
                 createdFiles.push(imageName);
 
                 setStatus(
-                    `🎥 إنشاء الفيديو المتحرك للمشهد ${i + 1}/${scenes.length}...`
+                    `🎥 إنشاء الفيديو للمشهد ${i + 1}/${scenes.length}...`
                 );
 
                 const fadeTime = Math.min(
@@ -641,7 +705,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (result !== 0) {
                     throw new Error(
-                        `فشل إنشاء المشهد ${i + 1}. تحقق من دعم FFmpeg لفلاتر zoompan وfade.`
+                        `فشل إنشاء المشهد ${i + 1}.`
                     );
                 }
 
@@ -653,8 +717,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
             }
 
-            // دمج المشاهد بدون xfade
-            setStatus("✨ دمج المشاهد السينمائية...");
+            // دمج الفيديوهات
+            setStatus("✨ دمج المشاهد...");
 
             const concatContent = videoFiles
                 .map(file => `file '${file}'`)
@@ -698,9 +762,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
             outputURL = URL.createObjectURL(blob);
 
-            downloadLink.href = outputURL;
-            downloadLink.download = outputName;
-            downloadLink.hidden = false;
+            if (downloadLink) {
+                downloadLink.href = outputURL;
+                downloadLink.download = outputName;
+                downloadLink.hidden = false;
+            } else {
+                // بديل إذا لم يكن رابط التحميل موجوداً في HTML
+                const temporaryLink = document.createElement("a");
+
+                temporaryLink.href = outputURL;
+                temporaryLink.download = outputName;
+                temporaryLink.textContent = "تحميل الفيديو النهائي";
+                temporaryLink.className = "primary-btn";
+                temporaryLink.style.display = "inline-block";
+
+                sceneList.appendChild(temporaryLink);
+            }
 
             setProgress(100);
 
@@ -723,7 +800,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
                     await ffmpeg.deleteFile(file);
                 } catch (error) {
-                    console.warn("تعذر حذف الملف المؤقت:", file);
+                    console.warn(
+                        "تعذر حذف الملف المؤقت:",
+                        file
+                    );
                 }
             }
 
@@ -738,5 +818,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     exportButton.addEventListener("click", exportVideo);
 
+    // ---------------------------------------
+    // INITIALIZE
+    // ---------------------------------------
+
     renderScenes();
+    setProgress(0);
+    setStatus("واجد لكتابة السكريبت.");
+
+    console.log("AI VIDEO STUDIO PRO - TEXT TO VIDEO READY");
 });
