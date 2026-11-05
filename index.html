@@ -365,6 +365,39 @@
                     <audio id="voicePreview" controls hidden></audio>
 
                     <p id="voiceName">التعليق الصوتي اختياري</p>
+                    <!-- MICROPHONE RECORDING STUDIO -->
+<div class="mic-recorder" id="micRecorder">
+
+    <div class="mic-title">
+        <span>🎙️</span>
+        <div>
+            <h4>تسجيل صوتي مباشر</h4>
+            <p>سجل صوتك مباشرة باستعمال الميكروفون</p>
+        </div>
+    </div>
+
+    <div class="mic-visual">
+        <span id="micStatus">الميكروفون غير نشط</span>
+        <strong id="micTimer">00:00</strong>
+    </div>
+
+    <div class="mic-buttons">
+        <button type="button" id="startMicRecording">
+            🔴 بدء التسجيل
+        </button>
+
+        <button type="button" id="stopMicRecording" disabled>
+            ⏹ إيقاف التسجيل
+        </button>
+    </div>
+
+    <audio id="recordedVoicePreview" controls hidden></audio>
+
+    <button type="button" id="deleteMicRecording" hidden>
+        🗑 حذف التسجيل
+    </button>
+
+</div>
 
                     <label for="voiceVolume">مستوى التعليق الصوتي</label>
                     <input type="range" id="voiceVolume" min="0" max="2" step="0.05" value="1">
