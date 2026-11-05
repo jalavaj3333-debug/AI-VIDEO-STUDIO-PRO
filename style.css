@@ -2091,3 +2091,19 @@ img {
         transition-duration: 0.01ms !important;
     }
 }
+/* =====================================
+   DASHBOARD VIEW NAVIGATION
+===================================== */
+
+.studio-view-hidden {
+    display: none !important;
+}
+
+/* Smooth page transition */
+.app-container main {
+    min-width: 0;
+}
+
+.menu-item {
+    cursor: pointer;
+}
