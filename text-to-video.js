@@ -21,16 +21,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const sceneCount = $("sceneCount");
     const totalDuration = $("sceneTotalDuration");
 
-    if (
-        !scriptInput ||
-        !generateButton ||
-        !clearButton ||
-        !sceneList ||
-        !exportButton
-    ) {
-        console.error(
-            "[Text to Video] عناصر HTML الأساسية ناقصة."
-        );
+    if (!scriptInput || !generateButton || !clearButton ||
+        !sceneList || !exportButton) {
+        console.error("[Text to Video] عناصر HTML الأساسية ناقصة.");
         return;
     }
 
@@ -48,16 +41,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // =========================================
 
     function setStatus(message) {
-        if (statusElement) {
-            statusElement.textContent = message;
-        }
-
+        if (statusElement) statusElement.textContent = message;
         console.log("[Text to Video]", message);
     }
 
     function setProgress(value) {
         const percentage = Math.max(0, Math.min(100, value));
-
         if (!progressBar) return;
 
         if (progressBar.tagName === "PROGRESS") {
@@ -68,9 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getSceneDuration() {
-        if (!durationInput) {
-            return DEFAULT_SCENE_DURATION;
-        }
+        if (!durationInput) return DEFAULT_SCENE_DURATION;
 
         const value = Number(durationInput.value);
 
@@ -86,10 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const minutes = Math.floor(safe / 60);
         const remaining = safe % 60;
 
-        return (
-            `${String(minutes).padStart(2, "0")}:` +
-            `${String(remaining).padStart(2, "0")}`
-        );
+        return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
     }
 
     function clearDownload() {
@@ -103,13 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
             downloadLink.removeAttribute("href");
         }
 
-        const oldLink = sceneList.querySelector(
-            ".temporary-video-download"
-        );
-
-        if (oldLink) {
-            oldLink.remove();
-        }
+        const oldLink = sceneList.querySelector(".temporary-video-download");
+        if (oldLink) oldLink.remove();
     }
 
     // =========================================
@@ -124,31 +103,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!normalized) return [];
 
-        // First, split by empty lines.
         let blocks = normalized
             .split(/\n\s*\n+/)
             .map(block => block.trim())
             .filter(Boolean);
 
-        // If there are no paragraph breaks,
-        // treat each non-empty line as a scene.
         if (blocks.length === 1) {
             const lines = normalized
                 .split("\n")
                 .map(line => line.trim())
                 .filter(Boolean);
 
-            if (lines.length > 1) {
-                blocks = lines;
-            }
+            if (lines.length > 1) blocks = lines;
         }
 
         const cleanedScenes = [];
 
         for (let block of blocks) {
-            // Remove headings such as:
-            // Scene 1:
-            // المشهد 1:
             block = block
                 .replace(
                     /^(?:المشهد|مشهد|scene)\s*\d+\s*[:：\-–—]?\s*/gim,
@@ -156,18 +127,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 )
                 .trim();
 
-            // Remove standalone heading lines.
             block = block
                 .split("\n")
-                .filter(line => {
-                    return !/^(?:المشهد|مشهد|scene)\s*\d+\s*[:：\-–—]?\s*$/i.test(
+                .filter(line =>
+                    !/^(?:المشهد|مشهد|scene)\s*\d+\s*[:：\-–—]?\s*$/i.test(
                         line.trim()
-                    );
-                })
+                    )
+                )
                 .join(" ")
                 .trim();
 
-            // Remove bullet symbols.
             block = block.replace(/^[•\-*]\s*/, "").trim();
 
             if (block.length < 3) continue;
@@ -177,7 +146,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 image: null,
                 imageURL: null,
                 imageError: null,
-                imageSource: ""
+                imageSource: "",
+                imageTitle: ""
             });
         }
 
@@ -185,188 +155,368 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // =========================================
-    // SEARCH QUERY TRANSLATION
+    // SMART SCENE SEARCH
     // =========================================
 
-    function getSearchQueries(text) {
-        const value = text.toLowerCase();
+    const STOP_WORDS = new Set([
+        "the", "and", "with", "from", "into", "over", "under",
+        "this", "that", "then", "there", "their", "they",
+        "while", "when", "where", "which", "what", "about",
+        "after", "before", "during", "through", "beautiful",
+        "cinematic", "scene", "shot", "video", "image",
+        "a", "an", "of", "in", "on", "at", "to", "for",
+        "is", "are", "was", "were", "be", "by", "as",
+        "من", "في", "على", "إلى", "الى", "عن", "مع",
+        "هذا", "هذه", "ذلك", "تلك", "ثم", "بعد", "قبل",
+        "و", "أو", "أن", "إن", "كان", "تكون", "يكون",
+        "المشهد", "مشهد", "لقطة", "صورة", "فيديو",
+        "وسط", "أمام", "خلف", "فوق", "تحت"
+    ]);
 
-        const dictionary = [
-            {
-                words: [
-                    "شروق",
-                    "الشمس",
-                    "الصباح",
-                    "sunrise",
-                    "sunset"
-                ],
-                query: "sunrise landscape photography"
-            },
-            {
-                words: [
-                    "الأطلس",
-                    "جبال",
-                    "جبل",
-                    "mountain",
-                    "atlas"
-                ],
-                query: "Atlas Mountains Morocco landscape"
-            },
-            {
-                words: [
-                    "مراكش",
-                    "المدينة القديمة",
-                    "أزقة",
-                    "medina",
-                    "marrakech"
-                ],
-                query: "Marrakech old medina Morocco"
-            },
-            {
-                words: [
-                    "باب",
-                    "أبواب",
-                    "عمارة",
-                    "معمار",
-                    "architecture"
-                ],
-                query: "Moroccan traditional architecture"
-            },
-            {
-                words: [
-                    "حرفي",
-                    "صناعة",
-                    "تقليدي",
-                    "صناعة تقليدية",
-                    "artisan",
-                    "craft"
-                ],
-                query: "Moroccan artisan traditional crafts"
-            },
-            {
-                words: [
-                    "ملابس",
-                    "أزياء",
-                    "عارض",
-                    "عارضة",
-                    "fashion",
-                    "model"
-                ],
-                query: "luxury fashion model photography"
-            },
-            {
-                words: [
-                    "أسود",
-                    "ذهبي",
-                    "فاخرة",
-                    "منتوجات",
-                    "luxury",
-                    "gold",
-                    "black"
-                ],
-                query: "black gold luxury product photography"
-            },
-            {
-                words: [
-                    "شعار",
-                    "لوغو",
-                    "تاج",
-                    "logo",
-                    "crown",
-                    "smailly"
-                ],
-                query: "golden crown black background"
-            },
-            {
-                words: [
-                    "بحر",
-                    "شاطئ",
-                    "محيط",
-                    "sea",
-                    "beach",
-                    "ocean"
-                ],
-                query: "ocean beach landscape photography"
-            },
-            {
-                words: [
-                    "غابة",
-                    "أشجار",
-                    "طبيعة",
-                    "forest",
-                    "trees",
-                    "nature"
-                ],
-                query: "beautiful forest nature photography"
-            },
-            {
-                words: [
-                    "سيارة",
-                    "سيارات",
-                    "car",
-                    "cars"
-                ],
-                query: "luxury car photography"
-            },
-            {
-                words: [
-                    "مدينة",
-                    "مباني",
-                    "شارع",
-                    "city",
-                    "street"
-                ],
-                query: "modern city street photography"
-            },
-            {
-                words: [
-                    "طفل",
-                    "أطفال",
-                    "لعب",
-                    "children",
-                    "kids"
-                ],
-                query: "children playing photography"
-            },
-            {
-                words: [
-                    "طعام",
-                    "أكل",
-                    "طبخ",
-                    "food",
-                    "cooking"
-                ],
-                query: "food photography"
-            }
-        ];
+    // Arabic/French/English concepts translated into focused searches.
+    const CONCEPTS = [
+        {
+            words: ["أسد", "الأسد", "اسد", "lion", "lions"],
+            query: "lion wildlife animal"
+        },
+        {
+            words: ["نمر", "النمر", "tiger", "tigers"],
+            query: "tiger wild animal"
+        },
+        {
+            words: ["فيل", "الفيل", "elephant", "elephants"],
+            query: "elephant wildlife"
+        },
+        {
+            words: ["دب", "الدب", "دب قطبي", "polar bear"],
+            query: "polar bear arctic wildlife"
+        },
+        {
+            words: ["ذئب", "الذئب", "wolf", "wolves"],
+            query: "wolf wildlife"
+        },
+        {
+            words: ["حصان", "الحصان", "خيول", "horse", "horses"],
+            query: "horse animal"
+        },
+        {
+            words: ["جمل", "الجمل", "camel", "camels"],
+            query: "camel desert animal"
+        },
+        {
+            words: ["طائر", "طيور", "عصفور", "birds", "bird"],
+            query: "wild birds"
+        },
+        {
+            words: ["نسر", "النسر", "eagle", "eagles"],
+            query: "eagle bird wildlife"
+        },
+        {
+            words: ["سمك", "أسماك", "سمكة", "fish"],
+            query: "underwater fish"
+        },
+        {
+            words: ["قرش", "القرش", "shark", "sharks"],
+            query: "shark underwater"
+        },
+        {
+            words: ["حوت", "الحوت", "whale", "whales"],
+            query: "whale ocean"
+        },
+        {
+            words: ["دلفين", "الدلفين", "dolphin", "dolphins"],
+            query: "dolphin ocean"
+        },
+        {
+            words: ["قطة", "قط", "القط", "cat", "cats"],
+            query: "domestic cat"
+        },
+        {
+            words: ["كلب", "الكلب", "dog", "dogs"],
+            query: "domestic dog"
+        },
+        {
+            words: ["شروق", "الشمس", "sunrise"],
+            query: "sunrise sun horizon"
+        },
+        {
+            words: ["غروب", "الغروب", "sunset"],
+            query: "sunset sun horizon"
+        },
+        {
+            words: ["قمر", "القمر", "moon"],
+            query: "moon night sky"
+        },
+        {
+            words: ["نجوم", "النجوم", "star", "stars"],
+            query: "stars night sky"
+        },
+        {
+            words: ["فضاء", "الفضاء", "كواكب", "planet", "space"],
+            query: "outer space planet"
+        },
+        {
+            words: ["جبال", "جبل", "جبل الأطلس", "mountain", "mountains"],
+            query: "mountain landscape"
+        },
+        {
+            words: ["صحراء", "الصحراء", "رمال", "desert"],
+            query: "desert sand dunes"
+        },
+        {
+            words: ["غابة", "الغابة", "أشجار", "forest", "trees"],
+            query: "forest trees woodland"
+        },
+        {
+            words: ["شلال", "الشلال", "waterfall"],
+            query: "waterfall nature"
+        },
+        {
+            words: ["نهر", "النهر", "river"],
+            query: "river landscape"
+        },
+        {
+            words: ["بحر", "البحر", "محيط", "ocean", "sea"],
+            query: "ocean sea water"
+        },
+        {
+            words: ["شاطئ", "الشاطئ", "beach"],
+            query: "sandy beach sea"
+        },
+        {
+            words: ["بركان", "البركان", "volcano"],
+            query: "volcano eruption"
+        },
+        {
+            words: ["مطر", "الأمطار", "rain", "rainfall"],
+            query: "rain falling weather"
+        },
+        {
+            words: ["ثلج", "الثلوج", "ثلوج", "snow"],
+            query: "snow winter landscape"
+        },
+        {
+            words: ["مدينة", "المدينة", "مدن", "city", "cities"],
+            query: "city skyline buildings"
+        },
+        {
+            words: ["شارع", "الشارع", "شوارع", "street", "streets"],
+            query: "urban street"
+        },
+        {
+            words: ["سيارة", "سيارات", "car", "cars"],
+            query: "car automobile"
+        },
+        {
+            words: ["طائرة", "الطائرة", "طائرات", "airplane", "aircraft"],
+            query: "airplane aircraft"
+        },
+        {
+            words: ["قطار", "القطار", "train", "trains"],
+            query: "railway train"
+        },
+        {
+            words: ["سفينة", "السفينة", "ship", "ships"],
+            query: "ship vessel sea"
+        },
+        {
+            words: ["طفل", "أطفال", "طفلة", "children", "child", "kids"],
+            query: "children"
+        },
+        {
+            words: ["رجل", "الرجال", "man", "men"],
+            query: "man portrait"
+        },
+        {
+            words: ["امرأة", "المرأة", "نساء", "woman", "women"],
+            query: "woman portrait"
+        },
+        {
+            words: ["طبخ", "الطبخ", "مطبخ", "cooking", "kitchen"],
+            query: "cooking kitchen"
+        },
+        {
+            words: ["طعام", "أكل", "وجبة", "food", "meal"],
+            query: "food photography"
+        },
+        {
+            words: ["كرة القدم", "مباراة", "football", "soccer"],
+            query: "football soccer match"
+        },
+        {
+            words: ["كرة السلة", "basketball"],
+            query: "basketball game"
+        },
+        {
+            words: ["مراكش", "مراكش القديمة", "marrakech"],
+            query: "Marrakech Morocco"
+        },
+        {
+            words: ["المغرب", "مغربي", "المغربية", "morocco", "moroccan"],
+            query: "Morocco"
+        },
+        {
+            words: ["فاس", "مدينة فاس", "fes"],
+            query: "Fez Morocco"
+        },
+        {
+            words: ["الصويرة", "essaouira"],
+            query: "Essaouira Morocco"
+        },
+        {
+            words: ["الرباط", "rabat"],
+            query: "Rabat Morocco"
+        },
+        {
+            words: ["مسجد", "المسجد", "mosque"],
+            query: "mosque architecture"
+        },
+        {
+            words: ["قصر", "القصور", "palace"],
+            query: "palace architecture"
+        },
+        {
+            words: ["باب", "أبواب", "door", "doors"],
+            query: "traditional door architecture"
+        },
+        {
+            words: ["حرفي", "حرفيون", "صناعة تقليدية", "artisan", "craft"],
+            query: "traditional crafts artisan"
+        },
+        {
+            words: ["قفطان", "قفاطين", "caftan"],
+            query: "Moroccan caftan traditional clothing"
+        },
+        {
+            words: ["ملابس", "أزياء", "موضة", "fashion", "clothing"],
+            query: "fashion clothing"
+        },
+        {
+            words: ["عارض", "عارضة", "عارض أزياء", "model", "models"],
+            query: "fashion model"
+        },
+        {
+            words: ["تاج", "التاج", "crown"],
+            query: "royal crown"
+        },
+        {
+            words: ["شعار", "لوغو", "logo"],
+            query: "brand logo"
+        },
+        {
+            words: ["زهرة", "زهور", "وردة", "flowers", "flower"],
+            query: "flower plant"
+        },
+        {
+            words: ["نبات", "نباتات", "plant", "plants"],
+            query: "green plants"
+        },
+        {
+            words: ["روبوت", "الروبوت", "robot", "robots"],
+            query: "robot technology"
+        },
+        {
+            words: ["حاسوب", "كمبيوتر", "computer", "laptop"],
+            query: "computer technology"
+        },
+        {
+            words: ["هاتف", "الهاتف", "smartphone", "phone"],
+            query: "smartphone mobile phone"
+        }
+    ];
 
-        const matchedQueries = dictionary
-            .filter(item =>
-                item.words.some(word => value.includes(word))
-            )
-            .map(item => item.query);
+    function normalizeText(text) {
+        return String(text || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[أإآٱ]/g, "ا")
+            .replace(/ى/g, "ي")
+            .replace(/ة/g, "ه")
+            .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
 
-        // Use original English words if available.
-        const englishWords = value
-            .replace(/[^\w\s-]/g, " ")
+    function extractEnglishWords(text) {
+        return normalizeText(text)
             .split(/\s+/)
-            .filter(word => word.length > 2)
-            .slice(0, 7)
-            .join(" ");
+            .filter(word =>
+                word.length > 2 &&
+                !STOP_WORDS.has(word) &&
+                /^[a-z0-9-]+$/i.test(word)
+            );
+    }
 
+    function getSearchQueries(text) {
+        const normalized = normalizeText(text);
         const queries = [];
 
-        if (englishWords && /[a-z]/i.test(englishWords)) {
-            queries.push(englishWords);
+        // Keep meaningful English words from the original scene.
+        const englishWords = extractEnglishWords(text);
+
+        if (englishWords.length) {
+            queries.push(englishWords.slice(0, 8).join(" "));
         }
 
-        queries.push(...matchedQueries);
+        // Match specific concepts.
+        for (const concept of CONCEPTS) {
+            const matched = concept.words.some(word => {
+                const normalizedWord = normalizeText(word);
 
-        // General backup searches.
-        queries.push("Morocco photography");
-        queries.push("cinematic landscape photography");
+                return normalized.includes(normalizedWord);
+            });
 
-        return [...new Set(queries)].slice(0, 5);
+            if (matched) {
+                queries.push(concept.query);
+            }
+        }
+
+        // Remove duplicate searches.
+        return [...new Set(queries)]
+            .filter(query => query.length >= 3)
+            .slice(0, 5);
+    }
+
+    // =========================================
+    // IMAGE RELEVANCE CHECK
+    // =========================================
+
+    function getSearchTerms(query) {
+        return extractEnglishWords(query)
+            .filter(word => word.length > 2);
+    }
+
+    function scoreImageTitle(title, queries) {
+        const normalizedTitle = normalizeText(title);
+        const titleWords = new Set(
+            normalizedTitle.split(/\s+/)
+        );
+
+        let bestScore = 0;
+
+        for (const query of queries) {
+            const terms = getSearchTerms(query);
+
+            if (!terms.length) continue;
+
+            let matches = 0;
+
+            for (const term of terms) {
+                if (
+                    titleWords.has(term) ||
+                    normalizedTitle.includes(term)
+                ) {
+                    matches++;
+                }
+            }
+
+            const score = matches / terms.length;
+
+            if (score > bestScore) bestScore = score;
+        }
+
+        return bestScore;
     }
 
     // =========================================
@@ -388,10 +538,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 resolve(img);
             };
 
-            img.onerror = () => {
-                reject(new Error("تعذر تحميل الصورة."));
-            };
-
+            img.onerror = () => reject(new Error("تعذر تحميل الصورة."));
             img.src = url;
         });
     }
@@ -404,18 +551,23 @@ document.addEventListener("DOMContentLoaded", () => {
         const queries = getSearchQueries(text);
 
         if (!queries.length) {
-            throw new Error("لم يتم إنشاء كلمات البحث.");
+            throw new Error(
+                "ما قدرناش نستخرجو كلمات بحث واضحة من وصف المشهد. جرّب وصفاً فيه موضوع محدد."
+            );
         }
 
+        let bestCandidate = null;
+        const MINIMUM_SCORE = 0.30;
+
         for (const query of queries) {
-            setStatus(`🔎 البحث عن الصورة: ${query}`);
+            setStatus(`🔎 كنقلب على صورة مرتبطة بـ: ${query}`);
 
             const params = new URLSearchParams({
                 action: "query",
                 generator: "search",
                 gsrsearch: query,
                 gsrnamespace: "6",
-                gsrlimit: "15",
+                gsrlimit: "30",
                 prop: "imageinfo",
                 iiprop: "url|mime",
                 iiurlwidth: "1400",
@@ -431,10 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const response = await fetch(apiURL);
 
                 if (!response.ok) {
-                    console.warn(
-                        "Wikimedia response error:",
-                        response.status
-                    );
+                    console.warn("Wikimedia error:", response.status);
                     continue;
                 }
 
@@ -445,54 +594,90 @@ document.addEventListener("DOMContentLoaded", () => {
                     continue;
                 }
 
-                const pages = Object.values(
-                    data.query?.pages || {}
-                );
+                const pages = Object.values(data.query?.pages || {});
 
                 const candidates = pages
-                    .map(page => page.imageinfo?.[0])
-                    .filter(info => {
-                        const url = info?.thumburl || info?.url;
+                    .map(page => {
+                        const info = page.imageinfo?.[0];
 
-                        return (
-                            url &&
-                            (
-                                !info.mime ||
-                                info.mime.startsWith("image/")
-                            )
+                        if (!info) return null;
+
+                        const url = info.thumburl || info.url;
+
+                        if (
+                            !url ||
+                            (info.mime && !info.mime.startsWith("image/"))
+                        ) {
+                            return null;
+                        }
+
+                        const score = scoreImageTitle(
+                            page.title || "",
+                            queries
                         );
-                    });
-
-                for (const info of candidates) {
-                    const imageURL = info.thumburl || info.url;
-
-                    try {
-                        const image = await loadImage(imageURL);
 
                         return {
-                            image,
-                            url: imageURL,
+                            url,
                             source: info.descriptionurl || "",
-                            query
+                            title: (page.title || "").replace(/^File:/i, ""),
+                            score
                         };
-                    } catch (error) {
-                        console.warn(
-                            "تعذر تحميل الصورة، تجربة صورة أخرى:",
-                            imageURL
-                        );
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) => b.score - a.score);
+
+                for (const candidate of candidates) {
+                    if (candidate.score < MINIMUM_SCORE) continue;
+
+                    // Avoid accepting a clearly unrelated result.
+                    if (
+                        !bestCandidate ||
+                        candidate.score > bestCandidate.score
+                    ) {
+                        bestCandidate = candidate;
+                    }
+
+                    // A strong title match is preferred.
+                    if (candidate.score >= 0.5) {
+                        try {
+                            const image = await loadImage(candidate.url);
+
+                            return {
+                                image,
+                                url: candidate.url,
+                                source: candidate.source,
+                                title: candidate.title,
+                                query,
+                                score: candidate.score
+                            };
+                        } catch (error) {
+                            console.warn("تعذر تحميل الصورة:", candidate.url);
+                        }
                     }
                 }
             } catch (error) {
-                console.warn(
-                    "فشل البحث باستعمال:",
-                    query,
-                    error
-                );
+                console.warn("فشل البحث باستعمال:", query, error);
             }
         }
 
+        // Try the best candidate only if it passed the minimum relevance check.
+        if (bestCandidate && bestCandidate.score >= MINIMUM_SCORE) {
+            try {
+                const image = await loadImage(bestCandidate.url);
+
+                return {
+                    image,
+                    url: bestCandidate.url,
+                    source: bestCandidate.source,
+                    title: bestCandidate.title,
+                    query: queries[0],
+                    score: bestCandidate.score
+                };
+            } catch (_) {}
+        }
+
         throw new Error(
-            "لم يتم العثور على صورة حقيقية مناسبة. جرّب وصفاً أبسط أو أعد المحاولة."
+            "ما لقيناش صورة بعنوان مرتبط بوضوح بهذا المشهد. جرّب وصفاً أكثر تحديداً."
         );
     }
 
@@ -505,20 +690,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!scenes.length) {
             const empty = document.createElement("p");
-
             empty.className = "empty-message";
-            empty.textContent =
-                "المشاهد ديالك غادي يظهرو هنا.";
-
+            empty.textContent = "المشاهد ديالك غادي يظهرو هنا.";
             sceneList.appendChild(empty);
 
-            if (sceneCount) {
-                sceneCount.textContent = "0 مشهد";
-            }
-
-            if (totalDuration) {
-                totalDuration.textContent = "00:00";
-            }
+            if (sceneCount) sceneCount.textContent = "0 مشهد";
+            if (totalDuration) totalDuration.textContent = "00:00";
 
             return;
         }
@@ -538,45 +715,69 @@ document.addEventListener("DOMContentLoaded", () => {
             const preview = document.createElement("div");
             preview.className = "scene-image-preview";
 
-            preview.style.width = "100%";
-            preview.style.maxWidth = "420px";
-            preview.style.margin = "12px 0";
-            preview.style.borderRadius = "12px";
-            preview.style.overflow = "hidden";
-            preview.style.background = "#171717";
+            Object.assign(preview.style, {
+                width: "100%",
+                maxWidth: "420px",
+                margin: "12px 0",
+                borderRadius: "12px",
+                overflow: "hidden",
+                background: "#171717"
+            });
 
             if (scene.image) {
                 const img = document.createElement("img");
-
                 img.src = scene.imageURL;
-                img.alt = `صورة المشهد ${index + 1}`;
-                img.style.width = "100%";
-                img.style.display = "block";
-                img.style.aspectRatio = "16 / 9";
-                img.style.objectFit = "cover";
+                img.alt = scene.imageTitle || `صورة المشهد ${index + 1}`;
+
+                Object.assign(img.style, {
+                    width: "100%",
+                    display: "block",
+                    aspectRatio: "16 / 9",
+                    objectFit: "cover"
+                });
 
                 preview.appendChild(img);
 
+                const source = document.createElement("small");
+                source.textContent =
+                    `الصورة: ${scene.imageTitle || "Wikimedia Commons"}`;
+
+                Object.assign(source.style, {
+                    display: "block",
+                    padding: "8px",
+                    color: "#d6b76b",
+                    overflowWrap: "anywhere"
+                });
+
+                preview.appendChild(source);
+
                 if (scene.imageSource) {
-                    const source = document.createElement("small");
+                    const sourceLink = document.createElement("a");
+                    sourceLink.href = scene.imageSource;
+                    sourceLink.target = "_blank";
+                    sourceLink.rel = "noopener noreferrer";
+                    sourceLink.textContent = "عرض مصدر الصورة";
 
-                    source.textContent = "مصدر الصورة: Wikimedia Commons";
-                    source.style.display = "block";
-                    source.style.padding = "6px";
-                    source.style.color = "#aaa";
+                    Object.assign(sourceLink.style, {
+                        display: "block",
+                        padding: "0 8px 8px",
+                        color: "#aaa"
+                    });
 
-                    preview.appendChild(source);
+                    preview.appendChild(sourceLink);
                 }
             } else {
                 const message = document.createElement("div");
 
                 message.textContent = scene.imageError
                     ? `❌ ${scene.imageError}`
-                    : "⏳ جاري البحث عن صورة حقيقية...";
+                    : "⏳ جاري البحث عن صورة مناسبة...";
 
-                message.style.padding = "25px";
-                message.style.textAlign = "center";
-                message.style.color = "#d6b76b";
+                Object.assign(message.style, {
+                    padding: "25px",
+                    textAlign: "center",
+                    color: "#d6b76b"
+                });
 
                 preview.appendChild(message);
             }
@@ -640,55 +841,44 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
 
                 try {
-                    const result = await searchSceneImage(
-                        scenes[i].text
-                    );
+                    const result = await searchSceneImage(scenes[i].text);
 
                     scenes[i].image = result.image;
                     scenes[i].imageURL = result.url;
                     scenes[i].imageSource = result.source;
+                    scenes[i].imageTitle = result.title;
 
                     successful++;
                 } catch (error) {
-                    console.error(
-                        `Scene ${i + 1}:`,
-                        error
-                    );
-
+                    console.error(`Scene ${i + 1}:`, error);
                     scenes[i].imageError =
-                        error.message || "تعذر العثور على الصورة.";
+                        error.message || "تعذر العثور على صورة مناسبة.";
                 }
 
                 renderScenes();
 
                 setProgress(
-                    Math.round(
-                        ((i + 1) / scenes.length) * 100
-                    )
+                    Math.round(((i + 1) / scenes.length) * 100)
                 );
             }
 
             if (successful === scenes.length) {
                 setStatus(
-                    `✅ تم العثور على صور جميع المشاهد (${successful}).`
+                    `✅ تم العثور على صور للمشاهد كلها (${successful}).`
                 );
             } else {
                 setStatus(
-                    `⚠️ تم العثور على ${successful} صورة من أصل ${scenes.length}.`
+                    `⚠️ تم العثور على ${successful} صورة مناسبة من أصل ${scenes.length}.`
                 );
             }
         } catch (error) {
             console.error(error);
-
-            setStatus(
-                "❌ حدث خطأ أثناء البحث عن الصور."
-            );
+            setStatus("❌ حدث خطأ أثناء البحث عن الصور.");
         } finally {
             searching = false;
 
             generateButton.disabled = false;
             clearButton.disabled = false;
-
             exportButton.disabled = successful === 0;
         }
     });
@@ -707,16 +897,12 @@ document.addEventListener("DOMContentLoaded", () => {
         renderScenes();
         setProgress(0);
 
-        exportButton.disabled = false;
-
+        exportButton.disabled = true;
         setStatus("تم مسح السكريبت والمشاهد.");
     });
 
     if (durationInput) {
-        durationInput.addEventListener(
-            "change",
-            renderScenes
-        );
+        durationInput.addEventListener("change", renderScenes);
     }
 
     // =========================================
@@ -730,14 +916,9 @@ document.addEventListener("DOMContentLoaded", () => {
         let line = "";
 
         for (const word of words) {
-            const test = line
-                ? `${line} ${word}`
-                : word;
+            const test = line ? `${line} ${word}` : word;
 
-            if (
-                ctx.measureText(test).width > maxWidth &&
-                line
-            ) {
+            if (ctx.measureText(test).width > maxWidth && line) {
                 lines.push(line);
                 line = word;
             } else {
@@ -745,9 +926,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        if (line) {
-            lines.push(line);
-        }
+        if (line) lines.push(line);
 
         return lines;
     }
@@ -756,28 +935,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // CREATE IMAGE FOR VIDEO SCENE
     // =========================================
 
-    async function createSceneImage(
-        scene,
-        index,
-        width,
-        height
-    ) {
+    async function createSceneImage(scene, index, width, height) {
         if (!scene.image) {
-            throw new Error(
-                `المشهد ${index + 1} لا يحتوي على صورة.`
-            );
+            throw new Error(`المشهد ${index + 1} لا يحتوي على صورة.`);
         }
 
         const canvas = document.createElement("canvas");
-
         canvas.width = width;
         canvas.height = height;
 
         const ctx = canvas.getContext("2d");
 
-        if (!ctx) {
-            throw new Error("تعذر إنشاء Canvas.");
-        }
+        if (!ctx) throw new Error("تعذر إنشاء Canvas.");
 
         const img = scene.image;
 
@@ -797,61 +966,32 @@ document.addEventListener("DOMContentLoaded", () => {
             drawHeight
         );
 
-        // Dark cinematic gradient
         const overlay = ctx.createLinearGradient(
-            0,
-            height * 0.35,
-            0,
-            height
+            0, height * 0.35, 0, height
         );
 
-        overlay.addColorStop(
-            0,
-            "rgba(0,0,0,0.05)"
-        );
-
-        overlay.addColorStop(
-            0.5,
-            "rgba(0,0,0,0.45)"
-        );
-
-        overlay.addColorStop(
-            1,
-            "rgba(0,0,0,0.85)"
-        );
+        overlay.addColorStop(0, "rgba(0,0,0,0.05)");
+        overlay.addColorStop(0.5, "rgba(0,0,0,0.45)");
+        overlay.addColorStop(1, "rgba(0,0,0,0.85)");
 
         ctx.fillStyle = overlay;
         ctx.fillRect(0, 0, width, height);
 
-        // Gold frame
         ctx.strokeStyle = "#d6b76b";
         ctx.lineWidth = 4;
+        ctx.strokeRect(25, 25, width - 50, height - 50);
 
-        ctx.strokeRect(
-            25,
-            25,
-            width - 50,
-            height - 50
-        );
-
-        // Studio title
         ctx.fillStyle = "#f1d28a";
         ctx.font = "bold 25px Arial";
         ctx.textAlign = "center";
         ctx.direction = "ltr";
 
-        ctx.fillText(
-            "AI VIDEO STUDIO PRO",
-            width / 2,
-            height * 0.12
-        );
+        ctx.fillText("AI VIDEO STUDIO PRO", width / 2, height * 0.12);
 
-        // Scene text
         ctx.direction = "rtl";
         ctx.fillStyle = "#ffffff";
 
         const fontSize = width > height ? 42 : 38;
-
         ctx.font = `bold ${fontSize}px Cairo, Arial`;
 
         const lines = wrapText(
@@ -884,15 +1024,9 @@ document.addEventListener("DOMContentLoaded", () => {
             canvas.toBlob(resolve, "image/png");
         });
 
-        if (!blob) {
-            throw new Error(
-                "تعذر إنشاء صورة الفيديو."
-            );
-        }
+        if (!blob) throw new Error("تعذر إنشاء صورة الفيديو.");
 
-        return new Uint8Array(
-            await blob.arrayBuffer()
-        );
+        return new Uint8Array(await blob.arrayBuffer());
     }
 
     // =========================================
@@ -903,19 +1037,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (exporting || searching) return;
 
         if (!scenes.length) {
-            setStatus(
-                "⚠️ قسم السكريبت إلى مشاهد أولاً."
-            );
+            setStatus("⚠️ قسم السكريبت إلى مشاهد أولاً.");
             return;
         }
 
-        const missingIndex = scenes.findIndex(
-            scene => !scene.image
-        );
+        const missingIndex = scenes.findIndex(scene => !scene.image);
 
         if (missingIndex !== -1) {
             setStatus(
-                `⚠️ المشهد ${missingIndex + 1} لا يحتوي على صورة. أعد البحث عن الصور.`
+                `⚠️ المشهد ${missingIndex + 1} لا يحتوي على صورة مناسبة. أعد البحث عن الصور.`
             );
             return;
         }
@@ -934,9 +1064,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (window.videoFFmpegBusy) {
-            setStatus(
-                "⏳ محرك FFmpeg مشغول بأداة أخرى."
-            );
+            setStatus("⏳ محرك FFmpeg مشغول بأداة أخرى.");
             return;
         }
 
@@ -953,9 +1081,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const duration = getSceneDuration();
         const frames = Math.round(duration * FPS);
 
-        const format = ratioInput
-            ? ratioInput.value
-            : "16:9";
+        const format = ratioInput ? ratioInput.value : "16:9";
 
         const dimensions = {
             "16:9": [1280, 720],
@@ -985,7 +1111,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 await document.fonts.ready;
             }
 
-            // Create each scene video
             for (let i = 0; i < scenes.length; i++) {
                 const imageName = `cinema_scene_${i}.png`;
                 const videoName = `cinema_scene_${i}.mp4`;
@@ -995,32 +1120,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
 
                 const imageData = await createSceneImage(
-                    scenes[i],
-                    i,
-                    width,
-                    height
+                    scenes[i], i, width, height
                 );
 
-                await ffmpeg.writeFile(
-                    imageName,
-                    imageData
-                );
-
+                await ffmpeg.writeFile(imageName, imageData);
                 createdFiles.push(imageName);
 
                 setStatus(
                     `🎥 إنشاء الفيديو للمشهد ${i + 1}/${scenes.length}...`
                 );
 
-                const fadeTime = Math.min(
-                    FADE_TIME,
-                    duration / 3
-                );
-
-                const fadeOutStart = Math.max(
-                    0,
-                    duration - fadeTime
-                );
+                const fadeTime = Math.min(FADE_TIME, duration / 3);
+                const fadeOutStart = Math.max(0, duration - fadeTime);
 
                 const zoomFilter =
                     `zoompan=z='min(zoom+0.0015,1.12)'` +
@@ -1047,22 +1158,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 ]);
 
                 if (result !== 0) {
-                    throw new Error(
-                        `فشل إنشاء المشهد ${i + 1}.`
-                    );
+                    throw new Error(`فشل إنشاء المشهد ${i + 1}.`);
                 }
 
                 createdFiles.push(videoName);
                 videoFiles.push(videoName);
 
                 setProgress(
-                    Math.round(
-                        ((i + 1) / scenes.length) * 65
-                    )
+                    Math.round(((i + 1) / scenes.length) * 65)
                 );
             }
 
-            // Merge scenes
             setStatus("✨ دمج المشاهد...");
 
             const concatContent = videoFiles
@@ -1094,14 +1200,10 @@ document.addEventListener("DOMContentLoaded", () => {
             setProgress(90);
             setStatus("📦 تجهيز الفيديو للتحميل...");
 
-            const outputData = await ffmpeg.readFile(
-                outputName
-            );
+            const outputData = await ffmpeg.readFile(outputName);
 
             if (!outputData || outputData.length === 0) {
-                throw new Error(
-                    "ملف الفيديو الناتج فارغ."
-                );
+                throw new Error("ملف الفيديو الناتج فارغ.");
             }
 
             const blob = new Blob(
@@ -1116,20 +1218,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 downloadLink.download = outputName;
                 downloadLink.hidden = false;
             } else {
-                const temporaryLink =
-                    document.createElement("a");
+                const temporaryLink = document.createElement("a");
 
                 temporaryLink.href = outputURL;
                 temporaryLink.download = outputName;
-                temporaryLink.textContent =
-                    "⬇ تحميل الفيديو النهائي";
-
+                temporaryLink.textContent = "⬇ تحميل الفيديو النهائي";
                 temporaryLink.className = "primary-btn";
                 temporaryLink.style.display = "inline-block";
-
-                temporaryLink.classList.add(
-                    "temporary-video-download"
-                );
+                temporaryLink.classList.add("temporary-video-download");
 
                 sceneList.appendChild(temporaryLink);
             }
@@ -1141,17 +1237,12 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
         } catch (error) {
-            console.error(
-                "Text to Video Export Error:",
-                error
-            );
+            console.error("Text to Video Export Error:", error);
 
             setProgress(0);
 
             setStatus(
-                "❌ " +
-                (error.message ||
-                    "وقع خطأ أثناء تصدير الفيديو.")
+                "❌ " + (error.message || "وقع خطأ أثناء تصدير الفيديو.")
             );
 
         } finally {
@@ -1159,10 +1250,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
                     await ffmpeg.deleteFile(file);
                 } catch (error) {
-                    console.warn(
-                        "تعذر حذف الملف المؤقت:",
-                        file
-                    );
+                    console.warn("تعذر حذف الملف المؤقت:", file);
                 }
             }
 
@@ -1175,10 +1263,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    exportButton.addEventListener(
-        "click",
-        exportVideo
-    );
+    exportButton.addEventListener("click", exportVideo);
 
     // =========================================
     // INITIALIZE
@@ -1186,6 +1271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderScenes();
     setProgress(0);
+    exportButton.disabled = true;
 
     setStatus("واجد لكتابة السكريبت.");
 
