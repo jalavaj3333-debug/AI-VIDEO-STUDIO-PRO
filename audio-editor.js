@@ -1,8 +1,12 @@
 
-/* =====================================
+/* ==========================================
    AI VIDEO STUDIO PRO
-   AUDIO MIXER ENGINE
-===================================== */
+   PROFESSIONAL AUDIO MIXER + MICROPHONE
+========================================== */
+
+/* ------------------------------------------
+   1. AUDIO STUDIO ELEMENTS
+------------------------------------------ */
 
 const videoInput = document.getElementById("audioVideoInput");
 const musicInput = document.getElementById("musicInput");
@@ -31,6 +35,10 @@ const progressBar = document.getElementById("audioProgressBar");
 const statusText = document.getElementById("audioStatus");
 const downloadLink = document.getElementById("audioDownload");
 
+/* ------------------------------------------
+   2. GLOBAL AUDIO VARIABLES
+------------------------------------------ */
+
 let selectedVideo = null;
 let selectedMusic = null;
 let selectedVoice = null;
@@ -39,22 +47,57 @@ let previewURLs = {};
 let outputURL = null;
 let processing = false;
 
+/* ------------------------------------------
+   3. STATUS AND PROGRESS
+------------------------------------------ */
+
 function setStatus(message) {
-    if (statusText) statusText.textContent = message;
+    if (statusText) {
+        statusText.textContent = message;
+    }
 }
 
 function setProgress(value) {
     if (progressBar) {
-        progressBar.style.width = `${value}%`;
+        progressBar.style.width =
+            `${Math.max(0, Math.min(100, value))}%`;
     }
 }
 
 function updateVolume(slider, output) {
     if (!slider || !output) return;
 
-    output.textContent =
-        Math.round(Number(slider.value) * 100) + "%";
+    const value = Number(slider.value);
+
+    output.textContent = Math.round(value * 100) + "%";
 }
+
+/* ------------------------------------------
+   4. FILE EXTENSION HELPERS
+------------------------------------------ */
+
+function getSafeExtension(filename, fallback) {
+    const match = String(filename || "").match(/\.([a-zA-Z0-9]{2,5})$/);
+
+    return match ? match[1].toLowerCase() : fallback;
+}
+
+function getAudioExtension(mimeType) {
+    const type = String(mimeType || "").toLowerCase();
+
+    if (type.includes("webm")) return "webm";
+    if (type.includes("mp4")) return "m4a";
+    if (type.includes("ogg")) return "ogg";
+    if (type.includes("wav")) return "wav";
+    if (type.includes("mpeg")) return "mp3";
+    if (type.includes("aac")) return "aac";
+
+    return "webm";
+}
+
+/* ------------------------------------------
+   5. PREVIEW FILES
+------------------------------------------ */
 
 function setupPreview(input, preview, nameElement, type) {
     if (!input || !preview || !nameElement) return;
@@ -66,6 +109,7 @@ function setupPreview(input, preview, nameElement, type) {
 
         if (type === "video" && !file.type.startsWith("video/")) {
             setStatus("اختار ملف فيديو صالح.");
+            input.value = "";
             return;
         }
 
@@ -74,6 +118,7 @@ function setupPreview(input, preview, nameElement, type) {
             !file.type.startsWith("audio/")
         ) {
             setStatus("اختار ملف صوتي صالح.");
+            input.value = "";
             return;
         }
 
@@ -86,81 +131,83 @@ function setupPreview(input, preview, nameElement, type) {
         }
 
         const url = URL.createObjectURL(file);
-        previewURLs[type] = url;
 
+        previewURLs[type] = url;
         preview.src = url;
         preview.hidden = false;
+
         nameElement.textContent = file.name;
 
-        if (outputURL) {
-            URL.revokeObjectURL(outputURL);
-            outputURL = null;
-        }
-
-        if (downloadLink) {
-            downloadLink.hidden = true;
-            downloadLink.removeAttribute("href");
-        }
+        invalidateAudioExport();
 
         setStatus("تم اختيار الملف: " + file.name);
         setProgress(0);
     });
 }
 
-setupPreview(
-    videoInput,
-    videoPreview,
-    videoName,
-    "video"
-);
+function invalidateAudioExport() {
+    if (outputURL) {
+        URL.revokeObjectURL(outputURL);
+        outputURL = null;
+    }
 
-setupPreview(
-    musicInput,
-    musicPreview,
-    musicName,
-    "music"
-);
+    if (downloadLink) {
+        downloadLink.hidden = true;
+        downloadLink.removeAttribute("href");
+    }
+}
 
-setupPreview(
-    voiceInput,
-    voicePreview,
-    voiceName,
-    "voice"
-);
+setupPreview(videoInput, videoPreview, videoName, "video");
+setupPreview(musicInput, musicPreview, musicName, "music");
+setupPreview(voiceInput, voicePreview, voiceName, "voice");
 
-/* VOLUME CONTROLS */
+/* ------------------------------------------
+   6. VOLUME CONTROLS
+------------------------------------------ */
 
 if (originalVolume) {
     originalVolume.addEventListener("input", () => {
         updateVolume(originalVolume, originalVolumeValue);
     });
+
+    updateVolume(originalVolume, originalVolumeValue);
 }
 
 if (musicVolume) {
     musicVolume.addEventListener("input", () => {
         updateVolume(musicVolume, musicVolumeValue);
     });
+
+    updateVolume(musicVolume, musicVolumeValue);
 }
 
 if (voiceVolume) {
     voiceVolume.addEventListener("input", () => {
         updateVolume(voiceVolume, voiceVolumeValue);
     });
+
+    updateVolume(voiceVolume, voiceVolumeValue);
 }
 
-/* FFmpeg CLEANUP */
+/* ------------------------------------------
+   7. FFMPEG CLEANUP
+------------------------------------------ */
 
 async function cleanFFmpegFiles(engine, files) {
+    if (!engine) return;
+
     for (const file of files) {
         try {
             await engine.deleteFile(file);
         } catch (error) {
-            // File may not exist.
+            // Temporary file may not exist.
         }
     }
 }
 
-/* EXPORT AUDIO MIX */
+/* ------------------------------------------
+   8. AUDIO MIX EXPORT
+------------------------------------------ */
 
 if (exportButton) {
     exportButton.addEventListener("click", async () => {
@@ -175,18 +222,27 @@ if (exportButton) {
         const engine = window.videoFFmpeg;
 
         if (!engine || !window.videoFFmpegLoaded) {
-            setStatus(
-                "حمّل محرك FFmpeg من أداة تقطيع الفيديو أولاً."
-            );
+            setStatus("حمّل محرك FFmpeg أولاً من أداة تقطيع الفيديو.");
             return;
         }
 
         processing = true;
         exportButton.disabled = true;
 
-        const videoFile = "audio_source_video.mp4";
-        const musicFile = "audio_background_music";
-        const voiceFile = "audio_voice_track";
+        const videoFile =
+            "audio_source_video." +
+            getSafeExtension(selectedVideo.name, "mp4");
+
+        const musicFile =
+            "audio_background_music." +
+            getSafeExtension(selectedMusic.name, "mp3");
+
+        const voiceExtension = selectedVoice instanceof Blob
+            ? getAudioExtension(selectedVoice.type)
+            : getSafeExtension(selectedVoice?.name, "webm");
+
+        const voiceFile = "audio_voice_track." + voiceExtension;
+
         const outputFile = "audio_final_video.mp4";
 
         const filesToClean = [
@@ -197,6 +253,8 @@ if (exportButton) {
         ];
 
         try {
+            invalidateAudioExport();
+
             setProgress(5);
             setStatus("جاري تجهيز الفيديو...");
 
@@ -206,7 +264,6 @@ if (exportButton) {
             );
 
             setProgress(20);
-
             setStatus("جاري تجهيز الموسيقى...");
 
             await engine.writeFile(
@@ -217,26 +274,35 @@ if (exportButton) {
             const hasVoice = Boolean(selectedVoice);
 
             if (hasVoice) {
+                setProgress(30);
+
                 await engine.writeFile(
                     voiceFile,
                     new Uint8Array(await selectedVoice.arrayBuffer())
                 );
             }
 
-            setProgress(35);
+            const originalLevel =
+                Number(originalVolume?.value ?? 1);
 
-            const originalLevel = Number(originalVolume?.value ?? 1);
-            const musicLevel = Number(musicVolume?.value ?? 0.5);
-            const voiceLevel = Number(voiceVolume?.value ?? 1);
+            const musicLevel =
+                Number(musicVolume?.value ?? 0.5);
 
-            const keepOriginalAudio = Boolean(keepOriginal?.checked);
+            const voiceLevel =
+                Number(voiceVolume?.value ?? 1);
+
+            const keepOriginalAudio =
+                Boolean(keepOriginal?.checked);
 
             const command = ["-i", videoFile];
 
-            // Repeat background music so it can cover the video.
+            // Loop the background music.
             command.push("-stream_loop", "-1", "-i", musicFile);
 
+            let voiceInputIndex = -1;
+
             if (hasVoice) {
+                voiceInputIndex = 2;
                 command.push("-i", voiceFile);
             }
 
@@ -247,17 +313,17 @@ if (exportButton) {
                 filters.push(
                     `[0:a]volume=${originalLevel}[original]`
                 );
+
                 audioLabels.push("[original]");
             }
 
             filters.push(
                 `[1:a]volume=${musicLevel}[music]`
             );
+
             audioLabels.push("[music]");
 
             if (hasVoice) {
-                const voiceInputIndex = 2;
-
                 filters.push(
                     `[${voiceInputIndex}:a]volume=${voiceLevel}[voice]`
                 );
@@ -271,7 +337,10 @@ if (exportButton) {
                 );
             } else {
                 filters.push(
-                    `${audioLabels.join("")}amix=inputs=${audioLabels.length}:duration=longest:dropout_transition=2:normalize=0[aout]`
+                    `${audioLabels.join("")}` +
+                    `amix=inputs=${audioLabels.length}:` +
+                    `duration=longest:dropout_transition=2:` +
+                    `normalize=0[aout]`
                 );
             }
 
@@ -288,8 +357,6 @@ if (exportButton) {
                 "aac",
                 "-b:a",
                 "192k",
-                "-t",
-                "999999",
                 "-shortest",
                 "-movflags",
                 "+faststart",
@@ -303,7 +370,7 @@ if (exportButton) {
 
             if (result !== 0) {
                 throw new Error(
-                    "تعذر تركيب الصوت. تأكد من صيغة الملفات."
+                    "تعذر تركيب الصوت. راجع صيغ الملفات وإعدادات الصوت الأصلي."
                 );
             }
 
@@ -317,15 +384,13 @@ if (exportButton) {
                 { type: "video/mp4" }
             );
 
-            if (outputURL) {
-                URL.revokeObjectURL(outputURL);
-            }
-
             outputURL = URL.createObjectURL(outputBlob);
 
-            downloadLink.href = outputURL;
-            downloadLink.download = "AI-VIDEO-STUDIO-AUDIO.mp4";
-            downloadLink.hidden = false;
+            if (downloadLink) {
+                downloadLink.href = outputURL;
+                downloadLink.download = "AI-VIDEO-STUDIO-AUDIO.mp4";
+                downloadLink.hidden = false;
+            }
 
             setProgress(100);
             setStatus("تم إنشاء الفيديو بنجاح! يمكنك تحميله الآن.");
@@ -338,7 +403,7 @@ if (exportButton) {
             setStatus(
                 "خطأ: " +
                 (error.message || String(error)) +
-                " إذا كان الفيديو بلا صوت أصلي، أزل علامة الاحتفاظ بالصوت الأصلي."
+                ". إذا كان الفيديو بلا صوت أصلي، أزل علامة الاحتفاظ بالصوت الأصلي."
             );
 
         } finally {
@@ -349,19 +414,36 @@ if (exportButton) {
         }
     });
 }
-/* =====================================
-   MICROPHONE RECORDING
-   AI VIDEO STUDIO PRO
-===================================== */
+
+/* ==========================================
+   9. MICROPHONE RECORDING STUDIO
+========================================== */
 
 (() => {
-    const startButton = document.getElementById("startMicRecording");
-    const stopButton = document.getElementById("stopMicRecording");
-    const deleteButton = document.getElementById("deleteMicRecording");
 
-    const micStatus = document.getElementById("micStatus");
-    const micTimer = document.getElementById("micTimer");
-    const recordedPreview = document.getElementById("recordedVoicePreview");
+    const startButton =
+        document.getElementById("startMicRecording");
+
+    const stopButton =
+        document.getElementById("stopMicRecording");
+
+    const deleteButton =
+        document.getElementById("deleteMicRecording");
+
+    const micStatus =
+        document.getElementById("micStatus");
+
+    const micTimer =
+        document.getElementById("micTimer");
+
+    const recordedPreview =
+        document.getElementById("recordedVoicePreview");
+
+    const waveformCanvas =
+        document.getElementById("micWaveform");
+
+    const waveformContext =
+        waveformCanvas?.getContext("2d");
 
     if (!startButton || !stopButton || !recordedPreview) {
         console.warn("Microphone controls were not found.");
@@ -371,88 +453,28 @@ if (exportButton) {
     let recorder = null;
     let microphoneStream = null;
     let recordedChunks = [];
+
     let recordingStartedAt = 0;
     let timerInterval = null;
     let recordingURL = null;
-   
-let micAudioContext = null;
-let micAnalyser = null;
-let micAnimationFrame = null;
 
-const waveformCanvas = document.getElementById("micWaveform");
-const waveformContext = waveformCanvas?.getContext("2d");
+    let micAudioContext = null;
+    let micAnalyser = null;
+    let micAnimationFrame = null;
 
-function drawMicrophoneWaveform() {
-    if (!micAnalyser || !waveformContext || !waveformCanvas) return;
-
-    const width = waveformCanvas.width;
-    const height = waveformCanvas.height;
-    const buffer = new Uint8Array(micAnalyser.fftSize);
-
-    function draw() {
-        micAnalyser.getByteTimeDomainData(buffer);
-
-        waveformContext.clearRect(0, 0, width, height);
-
-        waveformContext.beginPath();
-        waveformContext.lineWidth = 3;
-        waveformContext.strokeStyle = "#e8c75a";
-        waveformContext.shadowColor = "#d4af37";
-        waveformContext.shadowBlur = 12;
-
-        const sliceWidth = width / buffer.length;
-        let x = 0;
-
-        for (let i = 0; i < buffer.length; i++) {
-            const value = buffer[i] / 128;
-            const y = (value * height) / 2;
-
-            if (i === 0) {
-                waveformContext.moveTo(x, y);
-            } else {
-                waveformContext.lineTo(x, y);
-            }
-
-            x += sliceWidth;
-        }
-
-        waveformContext.stroke();
-        waveformContext.shadowBlur = 0;
-
-        micAnimationFrame = requestAnimationFrame(draw);
-    }
-
-    cancelAnimationFrame(micAnimationFrame);
-    draw();
-}
-
-function stopMicrophoneWaveform() {
-    if (micAnimationFrame) {
-        cancelAnimationFrame(micAnimationFrame);
-        micAnimationFrame = null;
-    }
-
-    if (waveformContext && waveformCanvas) {
-        waveformContext.clearRect(
-            0, 0,
-            waveformCanvas.width,
-            waveformCanvas.height
-        );
-    }
-
-    if (micAudioContext) {
-        micAudioContext.close().catch(console.error);
-        micAudioContext = null;
-    }
-
-    micAnalyser = null;
-}
-
+    /* --------------------------------------
+       10. TIMER
+    -------------------------------------- */
 
     function showTime(milliseconds) {
-        const totalSeconds = Math.floor(milliseconds / 1000);
-        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-        const seconds = String(totalSeconds % 60).padStart(2, "0");
+        const totalSeconds =
+            Math.floor(milliseconds / 1000);
+
+        const minutes =
+            String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+
+        const seconds =
+            String(totalSeconds % 60).padStart(2, "0");
 
         if (micTimer) {
             micTimer.textContent = `${minutes}:${seconds}`;
@@ -466,21 +488,139 @@ function stopMicrophoneWaveform() {
         }
     }
 
+    /* --------------------------------------
+       11. MICROPHONE CLEANUP
+    -------------------------------------- */
+
     function releaseMicrophone() {
         if (microphoneStream) {
-            microphoneStream.getTracks().forEach(track => track.stop());
+            microphoneStream.getTracks().forEach(track => {
+                track.stop();
+            });
+
             microphoneStream = null;
         }
     }
 
-    startButton.addEventListener("click", async () => {
-        if (recorder && recorder.state === "recording") return;
+    /* --------------------------------------
+       12. REAL-TIME WAVEFORM
+    -------------------------------------- */
 
-        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    function drawMicrophoneWaveform() {
+        if (!micAnalyser || !waveformContext || !waveformCanvas) {
+            return;
+        }
+
+        const width = waveformCanvas.width;
+        const height = waveformCanvas.height;
+
+        const buffer = new Uint8Array(micAnalyser.fftSize);
+
+        function draw() {
+            if (!micAnalyser) return;
+
+            micAnalyser.getByteTimeDomainData(buffer);
+
+            waveformContext.clearRect(
+                0,
+                0,
+                width,
+                height
+            );
+
+            // Center line.
+            waveformContext.beginPath();
+            waveformContext.strokeStyle = "rgba(212,175,55,0.15)";
+            waveformContext.lineWidth = 1;
+            waveformContext.moveTo(0, height / 2);
+            waveformContext.lineTo(width, height / 2);
+            waveformContext.stroke();
+
+            // Live audio waveform.
+            waveformContext.beginPath();
+            waveformContext.lineWidth = 3;
+            waveformContext.strokeStyle = "#e8c75a";
+            waveformContext.shadowColor = "#d4af37";
+            waveformContext.shadowBlur = 12;
+
+            const sliceWidth = width / buffer.length;
+
+            let x = 0;
+
+            for (let i = 0; i < buffer.length; i++) {
+                const value = buffer[i] / 128;
+
+                const y = (value * height) / 2;
+
+                if (i === 0) {
+                    waveformContext.moveTo(x, y);
+                } else {
+                    waveformContext.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            waveformContext.stroke();
+            waveformContext.shadowBlur = 0;
+
+            micAnimationFrame =
+                requestAnimationFrame(draw);
+        }
+
+        if (micAnimationFrame) {
+            cancelAnimationFrame(micAnimationFrame);
+        }
+
+        draw();
+    }
+
+    function stopMicrophoneWaveform() {
+        if (micAnimationFrame) {
+            cancelAnimationFrame(micAnimationFrame);
+            micAnimationFrame = null;
+        }
+
+        if (waveformContext && waveformCanvas) {
+            waveformContext.clearRect(
+                0,
+                0,
+                waveformCanvas.width,
+                waveformCanvas.height
+            );
+        }
+
+        if (micAudioContext) {
+            const context = micAudioContext;
+            micAudioContext = null;
+
+            context.close().catch(error => {
+                console.warn("AudioContext cleanup:", error);
+            });
+        }
+
+        micAnalyser = null;
+    }
+
+    /* --------------------------------------
+       13. START RECORDING
+    -------------------------------------- */
+
+    startButton.addEventListener("click", async () => {
+
+        if (recorder && recorder.state === "recording") {
+            return;
+        }
+
+        if (
+            !navigator.mediaDevices?.getUserMedia ||
+            !window.MediaRecorder
+        ) {
             if (micStatus) {
                 micStatus.textContent =
                     "المتصفح لا يدعم التسجيل أو يحتاج إلى HTTPS.";
             }
+
             return;
         }
 
@@ -488,16 +628,18 @@ function stopMicrophoneWaveform() {
             startButton.disabled = true;
 
             if (micStatus) {
-                micStatus.textContent = "كنطلبو الإذن لاستعمال الميكروفون...";
+                micStatus.textContent =
+                    "كنطلبو الإذن لاستعمال الميكروفون...";
             }
 
-            microphoneStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                }
-            });
+            microphoneStream =
+                await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
 
             recordedChunks = [];
 
@@ -526,30 +668,39 @@ function stopMicrophoneWaveform() {
                 }
             });
 
+            /* ----------------------------------
+               SAVE RECORDING
+            ---------------------------------- */
+
             recorder.addEventListener("stop", () => {
+
                 stopTimer();
+                stopMicrophoneWaveform();
                 releaseMicrophone();
 
                 const finalType =
                     recorder.mimeType || mimeType || "audio/webm";
 
-                const recordingBlob = new Blob(recordedChunks, {
-                    type: finalType
-                });
+                const recordingBlob = new Blob(
+                    recordedChunks,
+                    { type: finalType }
+                );
 
                 if (recordingBlob.size === 0) {
                     if (micStatus) {
-                        micStatus.textContent = "التسجيل فارغ، عاود المحاولة.";
+                        micStatus.textContent =
+                            "التسجيل فارغ، عاود المحاولة.";
                     }
+
                     startButton.disabled = false;
                     stopButton.disabled = true;
+
                     return;
                 }
 
-                // Use this recording as the voice track in Audio Studio.
+                // Store the voice track for Audio Mixer.
                 selectedVoice = recordingBlob;
 
-                // Replace the previous recording URL.
                 if (recordingURL) {
                     URL.revokeObjectURL(recordingURL);
                 }
@@ -558,21 +709,24 @@ function stopMicrophoneWaveform() {
                     URL.revokeObjectURL(previewURLs.voice);
                 }
 
-                recordingURL = URL.createObjectURL(recordingBlob);
+                recordingURL =
+                    URL.createObjectURL(recordingBlob);
+
                 previewURLs.voice = recordingURL;
 
                 recordedPreview.src = recordingURL;
                 recordedPreview.hidden = false;
                 recordedPreview.load();
 
-                // Keep the regular voice preview synchronized.
+                // The recording is available to the mixer.
                 if (voicePreview) {
                     voicePreview.src = recordingURL;
                     voicePreview.hidden = true;
                 }
 
                 if (voiceName) {
-                    voiceName.textContent = "🎙️ تسجيل صوتي من الميكروفون";
+                    voiceName.textContent =
+                        "🎙️ تسجيل صوتي من الميكروفون";
                 }
 
                 if (deleteButton) {
@@ -580,67 +734,90 @@ function stopMicrophoneWaveform() {
                 }
 
                 if (micStatus) {
-                    micStatus.textContent = "تم حفظ التسجيل بنجاح.";
+                    micStatus.textContent =
+                        "تم حفظ التسجيل بنجاح.";
                 }
 
-                if (typeof setStatus === "function") {
-                    setStatus("تم تسجيل التعليق الصوتي. يمكنك الآن استعماله في الفيديو.");
-                }
+                setStatus(
+                    "تم تسجيل التعليق الصوتي. أصبح جاهزاً للاستعمال."
+                );
 
-                if (typeof setProgress === "function") {
-                    setProgress(0);
-                }
-
-                if (outputURL) {
-                    URL.revokeObjectURL(outputURL);
-                    outputURL = null;
-                }
-
-                if (downloadLink) {
-                    downloadLink.hidden = true;
-                    downloadLink.removeAttribute("href");
-                }
+                setProgress(0);
+                invalidateAudioExport();
 
                 startButton.disabled = false;
                 stopButton.disabled = true;
             });
+
+            /* ----------------------------------
+               RECORDING ERROR
+            ---------------------------------- */
 
             recorder.addEventListener("error", event => {
-                console.error("Microphone recording error:", event.error);
-
-                if (micStatus) {
-                    micStatus.textContent = "وقع خطأ أثناء التسجيل.";
-                }
+                console.error(
+                    "Microphone recording error:",
+                    event.error
+                );
 
                 stopTimer();
+                stopMicrophoneWaveform();
                 releaseMicrophone();
+
+                if (micStatus) {
+                    micStatus.textContent =
+                        "وقع خطأ أثناء التسجيل.";
+                }
+
                 startButton.disabled = false;
                 stopButton.disabled = true;
             });
 
+            /* ----------------------------------
+               START WAVEFORM
+            ---------------------------------- */
+
             recorder.start();
-           micAudioContext = new AudioContext();
 
-if (micAudioContext.state === "suspended") {
-    await micAudioContext.resume();
-}
+            const AudioContextClass =
+                window.AudioContext ||
+                window.webkitAudioContext;
 
-micAnalyser = micAudioContext.createAnalyser();
-micAnalyser.fftSize = 2048;
-micAnalyser.smoothingTimeConstant = 0.75;
+            if (!AudioContextClass) {
+                throw new Error(
+                    "AudioContext غير مدعوم في هذا المتصفح."
+                );
+            }
 
-const micSource = micAudioContext.createMediaStreamSource(
-    microphoneStream
-);
+            micAudioContext = new AudioContextClass();
 
-micSource.connect(micAnalyser);
+            if (micAudioContext.state === "suspended") {
+                await micAudioContext.resume();
+            }
 
-drawMicrophoneWaveform();
+            micAnalyser =
+                micAudioContext.createAnalyser();
+
+            micAnalyser.fftSize = 2048;
+            micAnalyser.smoothingTimeConstant = 0.75;
+
+            const micSource =
+                micAudioContext.createMediaStreamSource(
+                    microphoneStream
+                );
+
+            micSource.connect(micAnalyser);
+
+            drawMicrophoneWaveform();
+
+            /* ----------------------------------
+               START TIMER
+            ---------------------------------- */
 
             recordingStartedAt = Date.now();
 
             if (micStatus) {
-                micStatus.textContent = "🔴 التسجيل جاري...";
+                micStatus.textContent =
+                    "🔴 التسجيل جاري...";
             }
 
             startButton.disabled = true;
@@ -653,39 +830,69 @@ drawMicrophoneWaveform();
             showTime(0);
 
             timerInterval = setInterval(() => {
-                showTime(Date.now() - recordingStartedAt);
+                showTime(
+                    Date.now() - recordingStartedAt
+                );
             }, 500);
 
         } catch (error) {
-            console.error("Microphone permission error:", error);
+            console.error(
+                "Microphone error:",
+                error
+            );
 
+            stopTimer();
+            stopMicrophoneWaveform();
             releaseMicrophone();
+
+            if (recorder && recorder.state === "recording") {
+                recorder.stop();
+            }
+
             startButton.disabled = false;
             stopButton.disabled = true;
 
             if (micStatus) {
                 micStatus.textContent =
-                    "ما قدرناش نستعملو الميكروفون. سمح للمتصفح باستعماله وحاول مجدداً.";
+                    "تعذر تشغيل الميكروفون. تحقق من الإذن وحاول مجدداً.";
             }
         }
     });
 
+    /* --------------------------------------
+       14. STOP RECORDING
+    -------------------------------------- */
+
     stopButton.addEventListener("click", () => {
+
         if (recorder && recorder.state === "recording") {
-            recorder.stop();
+
             stopButton.disabled = true;
 
             if (micStatus) {
-                micStatus.textContent = "جاري حفظ التسجيل...";
+                micStatus.textContent =
+                    "جاري حفظ التسجيل...";
             }
+
+            recorder.stop();
         }
     });
 
+    /* --------------------------------------
+       15. DELETE RECORDING
+    -------------------------------------- */
+
     if (deleteButton) {
         deleteButton.addEventListener("click", () => {
+
             if (recorder && recorder.state === "recording") {
-                recorder.stop();
+                setStatus("وقف التسجيل قبل حذفه.");
+                return;
             }
+
+            stopTimer();
+            stopMicrophoneWaveform();
+            releaseMicrophone();
 
             selectedVoice = null;
 
@@ -710,17 +917,28 @@ drawMicrophoneWaveform();
                 voicePreview.hidden = true;
             }
 
+            if (voiceInput) {
+                voiceInput.value = "";
+            }
+
             if (voiceName) {
-                voiceName.textContent = "التعليق الصوتي اختياري";
+                voiceName.textContent =
+                    "التعليق الصوتي اختياري";
             }
 
             deleteButton.hidden = true;
 
             if (micStatus) {
-                micStatus.textContent = "تم حذف التسجيل.";
+                micStatus.textContent =
+                    "تم حذف التسجيل.";
             }
 
             showTime(0);
+            invalidateAudioExport();
+
+            setStatus("تم حذف التعليق الصوتي.");
+            setProgress(0);
         });
     }
+
 })();
