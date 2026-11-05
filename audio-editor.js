@@ -349,3 +349,287 @@ if (exportButton) {
         }
     });
 }
+/* =====================================
+   MICROPHONE RECORDING
+   AI VIDEO STUDIO PRO
+===================================== */
+
+(() => {
+    const startButton = document.getElementById("startMicRecording");
+    const stopButton = document.getElementById("stopMicRecording");
+    const deleteButton = document.getElementById("deleteMicRecording");
+
+    const micStatus = document.getElementById("micStatus");
+    const micTimer = document.getElementById("micTimer");
+    const recordedPreview = document.getElementById("recordedVoicePreview");
+
+    if (!startButton || !stopButton || !recordedPreview) {
+        console.warn("Microphone controls were not found.");
+        return;
+    }
+
+    let recorder = null;
+    let microphoneStream = null;
+    let recordedChunks = [];
+    let recordingStartedAt = 0;
+    let timerInterval = null;
+    let recordingURL = null;
+
+    function showTime(milliseconds) {
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+        const seconds = String(totalSeconds % 60).padStart(2, "0");
+
+        if (micTimer) {
+            micTimer.textContent = `${minutes}:${seconds}`;
+        }
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+
+    function releaseMicrophone() {
+        if (microphoneStream) {
+            microphoneStream.getTracks().forEach(track => track.stop());
+            microphoneStream = null;
+        }
+    }
+
+    startButton.addEventListener("click", async () => {
+        if (recorder && recorder.state === "recording") return;
+
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+            if (micStatus) {
+                micStatus.textContent =
+                    "المتصفح لا يدعم التسجيل أو يحتاج إلى HTTPS.";
+            }
+            return;
+        }
+
+        try {
+            startButton.disabled = true;
+
+            if (micStatus) {
+                micStatus.textContent = "كنطلبو الإذن لاستعمال الميكروفون...";
+            }
+
+            microphoneStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+
+            recordedChunks = [];
+
+            let mimeType = "";
+
+            const supportedTypes = [
+                "audio/webm;codecs=opus",
+                "audio/webm",
+                "audio/mp4"
+            ];
+
+            for (const type of supportedTypes) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    mimeType = type;
+                    break;
+                }
+            }
+
+            recorder = mimeType
+                ? new MediaRecorder(microphoneStream, { mimeType })
+                : new MediaRecorder(microphoneStream);
+
+            recorder.addEventListener("dataavailable", event => {
+                if (event.data && event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            });
+
+            recorder.addEventListener("stop", () => {
+                stopTimer();
+                releaseMicrophone();
+
+                const finalType =
+                    recorder.mimeType || mimeType || "audio/webm";
+
+                const recordingBlob = new Blob(recordedChunks, {
+                    type: finalType
+                });
+
+                if (recordingBlob.size === 0) {
+                    if (micStatus) {
+                        micStatus.textContent = "التسجيل فارغ، عاود المحاولة.";
+                    }
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                    return;
+                }
+
+                // Use this recording as the voice track in Audio Studio.
+                selectedVoice = recordingBlob;
+
+                // Replace the previous recording URL.
+                if (recordingURL) {
+                    URL.revokeObjectURL(recordingURL);
+                }
+
+                if (previewURLs.voice) {
+                    URL.revokeObjectURL(previewURLs.voice);
+                }
+
+                recordingURL = URL.createObjectURL(recordingBlob);
+                previewURLs.voice = recordingURL;
+
+                recordedPreview.src = recordingURL;
+                recordedPreview.hidden = false;
+                recordedPreview.load();
+
+                // Keep the regular voice preview synchronized.
+                if (voicePreview) {
+                    voicePreview.src = recordingURL;
+                    voicePreview.hidden = true;
+                }
+
+                if (voiceName) {
+                    voiceName.textContent = "🎙️ تسجيل صوتي من الميكروفون";
+                }
+
+                if (deleteButton) {
+                    deleteButton.hidden = false;
+                }
+
+                if (micStatus) {
+                    micStatus.textContent = "تم حفظ التسجيل بنجاح.";
+                }
+
+                if (typeof setStatus === "function") {
+                    setStatus("تم تسجيل التعليق الصوتي. يمكنك الآن استعماله في الفيديو.");
+                }
+
+                if (typeof setProgress === "function") {
+                    setProgress(0);
+                }
+
+                if (outputURL) {
+                    URL.revokeObjectURL(outputURL);
+                    outputURL = null;
+                }
+
+                if (downloadLink) {
+                    downloadLink.hidden = true;
+                    downloadLink.removeAttribute("href");
+                }
+
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            });
+
+            recorder.addEventListener("error", event => {
+                console.error("Microphone recording error:", event.error);
+
+                if (micStatus) {
+                    micStatus.textContent = "وقع خطأ أثناء التسجيل.";
+                }
+
+                stopTimer();
+                releaseMicrophone();
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            });
+
+            recorder.start();
+
+            recordingStartedAt = Date.now();
+
+            if (micStatus) {
+                micStatus.textContent = "🔴 التسجيل جاري...";
+            }
+
+            startButton.disabled = true;
+            stopButton.disabled = false;
+
+            if (deleteButton) {
+                deleteButton.hidden = true;
+            }
+
+            showTime(0);
+
+            timerInterval = setInterval(() => {
+                showTime(Date.now() - recordingStartedAt);
+            }, 500);
+
+        } catch (error) {
+            console.error("Microphone permission error:", error);
+
+            releaseMicrophone();
+            startButton.disabled = false;
+            stopButton.disabled = true;
+
+            if (micStatus) {
+                micStatus.textContent =
+                    "ما قدرناش نستعملو الميكروفون. سمح للمتصفح باستعماله وحاول مجدداً.";
+            }
+        }
+    });
+
+    stopButton.addEventListener("click", () => {
+        if (recorder && recorder.state === "recording") {
+            recorder.stop();
+            stopButton.disabled = true;
+
+            if (micStatus) {
+                micStatus.textContent = "جاري حفظ التسجيل...";
+            }
+        }
+    });
+
+    if (deleteButton) {
+        deleteButton.addEventListener("click", () => {
+            if (recorder && recorder.state === "recording") {
+                recorder.stop();
+            }
+
+            selectedVoice = null;
+
+            if (recordingURL) {
+                URL.revokeObjectURL(recordingURL);
+                recordingURL = null;
+            }
+
+            if (previewURLs.voice) {
+                URL.revokeObjectURL(previewURLs.voice);
+                delete previewURLs.voice;
+            }
+
+            recordedPreview.pause();
+            recordedPreview.removeAttribute("src");
+            recordedPreview.load();
+            recordedPreview.hidden = true;
+
+            if (voicePreview) {
+                voicePreview.pause();
+                voicePreview.removeAttribute("src");
+                voicePreview.hidden = true;
+            }
+
+            if (voiceName) {
+                voiceName.textContent = "التعليق الصوتي اختياري";
+            }
+
+            deleteButton.hidden = true;
+
+            if (micStatus) {
+                micStatus.textContent = "تم حذف التسجيل.";
+            }
+
+            showTime(0);
+        });
+    }
+})();
