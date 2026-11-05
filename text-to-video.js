@@ -15,8 +15,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const status = $("textVideoStatus");
     const downloadLink = $("textVideoDownload");
 
-    if (!scriptInput || !generateButton || !clearButton ||
-        !sceneList || !durationInput || !exportButton || !downloadLink) {
+    if (
+        !scriptInput ||
+        !generateButton ||
+        !clearButton ||
+        !sceneList ||
+        !durationInput ||
+        !exportButton ||
+        !downloadLink
+    ) {
         console.error("Text to Video: عناصر HTML ناقصة.");
         return;
     }
@@ -27,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let searching = false;
 
     const FPS = 30;
-    const TRANSITION = 0.8;
+    const FADE_TIME = 0.6;
 
     function setStatus(message) {
         if (status) status.textContent = message;
@@ -51,9 +58,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatTime(seconds) {
-        const m = Math.floor(seconds / 60);
-        const s = seconds % 60;
-        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        const safeSeconds = Math.max(0, Math.floor(seconds));
+        const minutes = Math.floor(safeSeconds / 60);
+        const remaining = safeSeconds % 60;
+
+        return (
+            `${String(minutes).padStart(2, "0")}:` +
+            `${String(remaining).padStart(2, "0")}`
+        );
+    }
+
+    function getSceneDuration() {
+        const value = Number(durationInput.value);
+
+        if (!Number.isFinite(value)) return 5;
+
+        return Math.max(2, Math.min(30, value));
     }
 
     function getSearchQuery(text) {
@@ -62,35 +82,35 @@ document.addEventListener("DOMContentLoaded", () => {
             .trim()
             .split(/\s+/)
             .filter(word => word.length > 2)
-            .slice(0, 7)
+            .slice(0, 8)
             .join(" ");
     }
 
-    // تحميل الصورة والتأكد أنها صالحة للاستعمال
+    // تحميل الصورة والتأكد أنها صالحة
     function loadImage(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
 
-            // السماح باستعمال الصورة داخل Canvas
             img.crossOrigin = "anonymous";
 
             img.onload = () => {
                 if (!img.naturalWidth || !img.naturalHeight) {
-                    reject(new Error("الصورة فارغة."));
+                    reject(new Error("الصورة فارغة أو غير صالحة."));
                     return;
                 }
+
                 resolve(img);
             };
 
             img.onerror = () => {
-                reject(new Error("تعذر تحميل الصورة من المصدر."));
+                reject(new Error("تعذر تحميل الصورة."));
             };
 
             img.src = url;
         });
     }
 
-    // البحث في Wikimedia Commons
+    // البحث عن الصور في Wikimedia Commons
     async function searchSceneImage(text) {
         const query = getSearchQuery(text);
 
@@ -103,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
             generator: "search",
             gsrsearch: query,
             gsrnamespace: "6",
-            gsrlimit: "15",
+            gsrlimit: "20",
             prop: "imageinfo",
             iiprop: "url|mime",
             iiurlwidth: "1400",
@@ -112,7 +132,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         const apiURL =
-            "https://commons.wikimedia.org/w/api.php?" + params.toString();
+            "https://commons.wikimedia.org/w/api.php?" +
+            params.toString();
 
         const response = await fetch(apiURL);
 
@@ -121,6 +142,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const data = await response.json();
+
+        if (data.error) {
+            throw new Error(
+                data.error.info || "خطأ أثناء البحث عن الصور."
+            );
+        }
+
         const pages = Object.values(data.query?.pages || {});
 
         const candidates = pages
@@ -128,39 +156,37 @@ document.addEventListener("DOMContentLoaded", () => {
             .filter(info => {
                 if (!info) return false;
 
-                const mime = info.mime || "";
-                return (
-                    mime === "image/jpeg" ||
-                    mime === "image/png" ||
-                    mime === "image/webp"
-                );
+                // نستعمل الصورة المصغرة حتى مع بعض ملفات SVG
+                return Boolean(info.thumburl || info.url);
             });
 
         if (!candidates.length) {
-            throw new Error(`ما تلقاتش صورة للبحث: ${query}`);
+            throw new Error(`لم يتم العثور على صورة: ${query}`);
         }
 
-        // تجربة أكثر من صورة إذا الأولى لم تتحمل
+        // تجربة أكثر من صورة حتى نجد صورة قابلة للتحميل
         for (const info of candidates) {
             const url = info.thumburl || info.url;
+
             if (!url) continue;
 
             try {
                 const image = await loadImage(url);
+
                 return {
                     image,
                     url,
                     title: info.descriptionurl || "Wikimedia Commons"
                 };
             } catch (error) {
-                console.warn("تعذر تحميل صورة، تجربة صورة أخرى:", error);
+                console.warn("تعذر تحميل الصورة، تجربة صورة أخرى:", error);
             }
         }
 
         throw new Error("تم العثور على صور ولكن تعذر تحميلها.");
     }
 
-    // عرض المشاهد والصور
+    // عرض المشاهد
     function renderScenes() {
         sceneList.innerHTML = "";
 
@@ -174,8 +200,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (sceneCount) sceneCount.textContent = "0 مشهد";
             if (totalDuration) totalDuration.textContent = "00:00";
+
             return;
         }
+
+        const duration = getSceneDuration();
 
         scenes.forEach((scene, index) => {
             const card = document.createElement("div");
@@ -199,15 +228,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (scene.image) {
                 const img = document.createElement("img");
+
                 img.src = scene.image.src;
                 img.alt = `صورة المشهد ${index + 1}`;
                 img.style.width = "100%";
                 img.style.display = "block";
                 img.style.aspectRatio = "16 / 9";
                 img.style.objectFit = "cover";
+
                 preview.appendChild(img);
             } else {
                 const message = document.createElement("div");
+
                 message.textContent = scene.imageError
                     ? `❌ ${scene.imageError}`
                     : "⏳ جاري البحث عن الصورة...";
@@ -215,11 +247,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 message.style.padding = "25px";
                 message.style.textAlign = "center";
                 message.style.color = "#d6b76b";
+
                 preview.appendChild(message);
             }
 
             const info = document.createElement("small");
-            info.textContent = `${durationInput.value} ثوانٍ`;
+            info.textContent = `${duration} ثوانٍ`;
 
             card.append(heading, paragraph, preview, info);
             sceneList.appendChild(card);
@@ -231,12 +264,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (totalDuration) {
             totalDuration.textContent = formatTime(
-                scenes.length * Number(durationInput.value)
+                scenes.length * duration
             );
         }
     }
 
-    // تقسيم النص والبحث عن الصور مباشرة
+    // تقسيم السكريبت والبحث عن الصور
     generateButton.addEventListener("click", async () => {
         if (searching || exporting) return;
 
@@ -255,6 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .map(part => ({
                 text: part,
                 image: null,
+                imageURL: null,
                 imageError: null
             }));
 
@@ -275,27 +309,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 try {
                     const result = await searchSceneImage(scenes[i].text);
+
                     scenes[i].image = result.image;
                     scenes[i].imageURL = result.url;
+
                     successful++;
                 } catch (error) {
                     console.error(`Scene ${i + 1}:`, error);
-                    scenes[i].imageError = error.message;
+                    scenes[i].imageError =
+                        error.message || "تعذر العثور على الصورة.";
                 }
 
                 renderScenes();
+
                 setProgress(
                     Math.round(((i + 1) / scenes.length) * 100)
                 );
             }
 
             if (successful === scenes.length) {
-                setStatus(`✅ تم العثور على صور لجميع المشاهد (${successful}).`);
+                setStatus(
+                    `✅ تم العثور على صور جميع المشاهد (${successful}).`
+                );
             } else {
                 setStatus(
                     `⚠️ تم العثور على ${successful} صورة من أصل ${scenes.length}. راجع المشاهد التي لم تنجح.`
                 );
             }
+        } catch (error) {
+            console.error(error);
+            setStatus("❌ حدث خطأ أثناء البحث عن الصور.");
         } finally {
             searching = false;
             generateButton.disabled = false;
@@ -312,11 +355,13 @@ document.addEventListener("DOMContentLoaded", () => {
         clearDownload();
         renderScenes();
         setProgress(0);
+
         setStatus("تم مسح السكريبت والمشاهد.");
     });
 
     durationInput.addEventListener("change", renderScenes);
 
+    // تقسيم النص إلى أسطر
     function wrapText(ctx, text, maxWidth) {
         const words = text.split(/\s+/);
         const lines = [];
@@ -334,18 +379,20 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (line) lines.push(line);
+
         return lines;
     }
 
-    // تجهيز صورة المشهد من الصورة الحقيقية
+    // تجهيز صورة المشهد
     async function createSceneImage(scene, index, width, height) {
         if (!scene.image) {
             throw new Error(
-                `المشهد ${index + 1} ما عندوش صورة. أعد البحث عن الصور أولاً.`
+                `المشهد ${index + 1} لا يحتوي على صورة.`
             );
         }
 
         const canvas = document.createElement("canvas");
+
         canvas.width = width;
         canvas.height = height;
 
@@ -375,7 +422,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // تدرج داكن خلف النص
         const overlay = ctx.createLinearGradient(
-            0, height * 0.35, 0, height
+            0,
+            height * 0.35,
+            0,
+            height
         );
 
         overlay.addColorStop(0, "rgba(0,0,0,0.05)");
@@ -385,22 +435,35 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.fillStyle = overlay;
         ctx.fillRect(0, 0, width, height);
 
-        // إطار
+        // إطار ذهبي
         ctx.strokeStyle = "#d6b76b";
         ctx.lineWidth = 4;
-        ctx.strokeRect(25, 25, width - 50, height - 50);
 
+        ctx.strokeRect(
+            25,
+            25,
+            width - 50,
+            height - 50
+        );
+
+        // عنوان المشروع
         ctx.fillStyle = "#f1d28a";
         ctx.font = "bold 25px Arial";
         ctx.textAlign = "center";
         ctx.direction = "ltr";
-        ctx.fillText("AI VIDEO STUDIO PRO", width / 2, height * 0.12);
 
-        // كتابة النص
+        ctx.fillText(
+            "AI VIDEO STUDIO PRO",
+            width / 2,
+            height * 0.12
+        );
+
+        // النص العربي
         ctx.direction = "rtl";
         ctx.fillStyle = "#ffffff";
 
         const fontSize = width > height ? 42 : 38;
+
         ctx.font = `bold ${fontSize}px Cairo, Arial`;
 
         const lines = wrapText(
@@ -410,7 +473,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ).slice(0, 7);
 
         const lineHeight = fontSize * 1.6;
-        const startY = height * 0.68 -
+
+        const startY =
+            height * 0.68 -
             ((lines.length - 1) * lineHeight) / 2;
 
         ctx.shadowColor = "rgba(0,0,0,0.95)";
@@ -427,9 +492,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         ctx.shadowBlur = 0;
 
-        const blob = await new Promise(resolve =>
-            canvas.toBlob(resolve, "image/png")
-        );
+        const blob = await new Promise(resolve => {
+            canvas.toBlob(resolve, "image/png");
+        });
 
         if (!blob) {
             throw new Error("تعذر إنشاء صورة الفيديو.");
@@ -447,20 +512,25 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const missing = scenes.findIndex(scene => !scene.image);
+        const missingIndex = scenes.findIndex(scene => !scene.image);
 
-        if (missing !== -1) {
+        if (missingIndex !== -1) {
             setStatus(
-                `⚠️ المشهد ${missing + 1} ما عندوش صورة. أعد تقسيم السكريبت والبحث عن الصور.`
+                `⚠️ المشهد ${missingIndex + 1} لا يحتوي على صورة. أعد البحث عن الصور.`
             );
             return;
         }
 
         const ffmpeg = window.videoFFmpeg;
 
-        if (!ffmpeg || !window.videoFFmpegLoaded ||
-            typeof ffmpeg.exec !== "function") {
-            setStatus("⚠️ محرك FFmpeg غير جاهز. حمّلو من قسم قص الفيديو أولاً.");
+        if (
+            !ffmpeg ||
+            !window.videoFFmpegLoaded ||
+            typeof ffmpeg.exec !== "function"
+        ) {
+            setStatus(
+                "⚠️ محرك FFmpeg غير جاهز. حمّله من قسم قص الفيديو أولاً."
+            );
             return;
         }
 
@@ -472,16 +542,19 @@ document.addEventListener("DOMContentLoaded", () => {
         exporting = true;
         window.videoFFmpegBusy = true;
         exportButton.disabled = true;
+        generateButton.disabled = true;
+        clearButton.disabled = true;
 
         clearDownload();
         setProgress(0);
 
-        const duration = Math.max(
-            2,
-            Number(durationInput.value) || 5
-        );
+        const requestedDuration = getSceneDuration();
+        const frames = Math.round(requestedDuration * FPS);
+        const duration = frames / FPS;
 
-        const format = formatInput ? formatInput.value : "16:9";
+        const format = formatInput
+            ? formatInput.value
+            : "16:9";
 
         const dimensions = {
             "16:9": [1280, 720],
@@ -495,13 +568,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const createdFiles = [];
         const videoFiles = [];
 
+        const outputName = "AI-CINEMATIC-VIDEO.mp4";
+        const concatName = "cinema_scenes.txt";
+
         try {
+            // حذف ملف سابق إن وجد
+            try {
+                await ffmpeg.deleteFile(outputName);
+            } catch (_) {}
+
+            try {
+                await ffmpeg.deleteFile(concatName);
+            } catch (_) {}
+
+            // إنشاء فيديو لكل مشهد
             for (let i = 0; i < scenes.length; i++) {
                 const imageName = `cinema_scene_${i}.png`;
                 const videoName = `cinema_scene_${i}.mp4`;
 
                 setStatus(
-                    `🎨 تجهيز الصورة الحقيقية للمشهد ${i + 1}/${scenes.length}...`
+                    `🎨 تجهيز صورة المشهد ${i + 1}/${scenes.length}...`
                 );
 
                 const imageData = await createSceneImage(
@@ -512,17 +598,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
 
                 await ffmpeg.writeFile(imageName, imageData);
+
                 createdFiles.push(imageName);
 
                 setStatus(
-                    `🎥 إضافة الحركة السينمائية للمشهد ${i + 1}...`
+                    `🎥 إنشاء الفيديو المتحرك للمشهد ${i + 1}/${scenes.length}...`
                 );
 
-                const frames = duration * FPS;
+                const fadeTime = Math.min(
+                    FADE_TIME,
+                    duration / 3
+                );
+
+                const fadeOutStart = Math.max(
+                    0,
+                    duration - fadeTime
+                );
 
                 const zoomFilter =
                     `zoompan=z='min(zoom+0.0015,1.12)'` +
-                    `:d=${frames}:s=${width}x${height}:fps=${FPS},` +
+                    `:d=${frames}` +
+                    `:s=${width}x${height}` +
+                    `:fps=${FPS},` +
+                    `fade=t=in:st=0:d=${fadeTime},` +
+                    `fade=t=out:st=${fadeOutStart}:d=${fadeTime},` +
                     `setsar=1,format=yuv420p`;
 
                 const result = await ffmpeg.exec([
@@ -542,7 +641,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (result !== 0) {
                     throw new Error(
-                        `فشل إنشاء المشهد ${i + 1}. تحقق من دعم libx264 وzoompan.`
+                        `فشل إنشاء المشهد ${i + 1}. تحقق من دعم FFmpeg لفلاتر zoompan وfade.`
                     );
                 }
 
@@ -554,61 +653,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
             }
 
-            setStatus("✨ إضافة الانتقالات بين المشاهد...");
+            // دمج المشاهد بدون xfade
+            setStatus("✨ دمج المشاهد السينمائية...");
 
-            let inputArgs = [];
-            let filterGraph = "";
-            let finalLabel = "";
+            const concatContent = videoFiles
+                .map(file => `file '${file}'`)
+                .join("\n");
 
-            if (videoFiles.length === 1) {
-                inputArgs = ["-i", videoFiles[0]];
-                finalLabel = "0:v";
-            } else {
-                videoFiles.forEach(file => {
-                    inputArgs.push("-i", file);
-                });
-
-                let previous = "0:v";
-
-                for (let i = 1; i < videoFiles.length; i++) {
-                    const next = `v${i}`;
-                    const offset = duration * i - TRANSITION * i;
-
-                    filterGraph +=
-                        `[${previous}][${i}:v]` +
-                        `xfade=transition=fade:` +
-                        `duration=${TRANSITION}:` +
-                        `offset=${offset.toFixed(3)}` +
-                        `[${next}];`;
-
-                    previous = next;
-                }
-
-                finalLabel = previous;
-                filterGraph = filterGraph.replace(/;$/, "");
-            }
-
-            const outputName = "AI-CINEMATIC-VIDEO.mp4";
-
-            const mergeArgs = [...inputArgs];
-
-            if (videoFiles.length > 1) {
-                mergeArgs.push("-filter_complex", filterGraph);
-            }
-
-            mergeArgs.push(
-                "-map", `[${finalLabel}]`,
-                "-c:v", "libx264",
-                "-preset", "ultrafast",
-                "-pix_fmt", "yuv420p",
-                "-movflags", "+faststart",
-                outputName
+            await ffmpeg.writeFile(
+                concatName,
+                new TextEncoder().encode(concatContent)
             );
 
-            const mergeResult = await ffmpeg.exec(mergeArgs);
+            createdFiles.push(concatName);
+
+            const mergeResult = await ffmpeg.exec([
+                "-f", "concat",
+                "-safe", "0",
+                "-i", concatName,
+                "-c", "copy",
+                "-movflags", "+faststart",
+                outputName
+            ]);
 
             if (mergeResult !== 0) {
-                throw new Error("فشل دمج المشاهد والانتقالات.");
+                throw new Error("فشل دمج المشاهد.");
             }
 
             createdFiles.push(outputName);
@@ -618,7 +687,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const outputData = await ffmpeg.readFile(outputName);
 
-            if (!outputData || !outputData.length) {
+            if (!outputData || outputData.length === 0) {
                 throw new Error("ملف الفيديو الناتج فارغ.");
             }
 
@@ -630,26 +699,40 @@ document.addEventListener("DOMContentLoaded", () => {
             outputURL = URL.createObjectURL(blob);
 
             downloadLink.href = outputURL;
-            downloadLink.download = "AI-CINEMATIC-VIDEO.mp4";
+            downloadLink.download = outputName;
             downloadLink.hidden = false;
 
             setProgress(100);
-            setStatus("✅ الفيديو السينمائي بالصور والحركة واجد!");
+
+            setStatus(
+                `✅ الفيديو واجد! المدة التقريبية: ${formatTime(scenes.length * duration)}`
+            );
 
         } catch (error) {
-            console.error("Text to Video:", error);
+            console.error("Text to Video Export Error:", error);
+
             setProgress(0);
-            setStatus("❌ " + (error.message || "وقع خطأ أثناء التصدير."));
+
+            setStatus(
+                "❌ " +
+                (error.message || "وقع خطأ أثناء تصدير الفيديو.")
+            );
+
         } finally {
             for (const file of createdFiles) {
                 try {
                     await ffmpeg.deleteFile(file);
-                } catch (_) {}
+                } catch (error) {
+                    console.warn("تعذر حذف الملف المؤقت:", file);
+                }
             }
 
             exporting = false;
             window.videoFFmpegBusy = false;
+
             exportButton.disabled = false;
+            generateButton.disabled = false;
+            clearButton.disabled = false;
         }
     }
 
