@@ -374,6 +374,80 @@ if (exportButton) {
     let recordingStartedAt = 0;
     let timerInterval = null;
     let recordingURL = null;
+   
+let micAudioContext = null;
+let micAnalyser = null;
+let micAnimationFrame = null;
+
+const waveformCanvas = document.getElementById("micWaveform");
+const waveformContext = waveformCanvas?.getContext("2d");
+
+function drawMicrophoneWaveform() {
+    if (!micAnalyser || !waveformContext || !waveformCanvas) return;
+
+    const width = waveformCanvas.width;
+    const height = waveformCanvas.height;
+    const buffer = new Uint8Array(micAnalyser.fftSize);
+
+    function draw() {
+        micAnalyser.getByteTimeDomainData(buffer);
+
+        waveformContext.clearRect(0, 0, width, height);
+
+        waveformContext.beginPath();
+        waveformContext.lineWidth = 3;
+        waveformContext.strokeStyle = "#e8c75a";
+        waveformContext.shadowColor = "#d4af37";
+        waveformContext.shadowBlur = 12;
+
+        const sliceWidth = width / buffer.length;
+        let x = 0;
+
+        for (let i = 0; i < buffer.length; i++) {
+            const value = buffer[i] / 128;
+            const y = (value * height) / 2;
+
+            if (i === 0) {
+                waveformContext.moveTo(x, y);
+            } else {
+                waveformContext.lineTo(x, y);
+            }
+
+            x += sliceWidth;
+        }
+
+        waveformContext.stroke();
+        waveformContext.shadowBlur = 0;
+
+        micAnimationFrame = requestAnimationFrame(draw);
+    }
+
+    cancelAnimationFrame(micAnimationFrame);
+    draw();
+}
+
+function stopMicrophoneWaveform() {
+    if (micAnimationFrame) {
+        cancelAnimationFrame(micAnimationFrame);
+        micAnimationFrame = null;
+    }
+
+    if (waveformContext && waveformCanvas) {
+        waveformContext.clearRect(
+            0, 0,
+            waveformCanvas.width,
+            waveformCanvas.height
+        );
+    }
+
+    if (micAudioContext) {
+        micAudioContext.close().catch(console.error);
+        micAudioContext = null;
+    }
+
+    micAnalyser = null;
+}
+
 
     function showTime(milliseconds) {
         const totalSeconds = Math.floor(milliseconds / 1000);
