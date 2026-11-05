@@ -1,5 +1,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
+    "use strict";
+
     // =====================================
     // ELEMENTS
     // =====================================
@@ -8,6 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const menuToggle = document.getElementById("menuToggle");
 
     const mediaInput = document.getElementById("mediaInput");
+    const uploadArea = document.getElementById("uploadArea");
+    const chooseMedia = document.getElementById("chooseMedia");
+
     const previewScreen = document.getElementById("previewScreen");
     const fileList = document.getElementById("fileList");
     const mediaInfo = document.getElementById("mediaInfo");
@@ -36,37 +41,50 @@ document.addEventListener("DOMContentLoaded", () => {
         .filter(Boolean);
 
     const hero = document.querySelector(".hero");
-    const toolsGrid = document.querySelector(".tools-grid");
 
     function showView(viewId, updateHash = true) {
+        // Support home alias
+        if (viewId === "home") {
+            viewId = "create";
+        }
+
+        // Smart montage is inside the editor
+        if (viewId === "smart-montage") {
+            viewId = "editor";
+        }
+
         const target = document.getElementById(viewId);
 
-        // Hide all dashboard sections
-        views.forEach(view => {
-            view.classList.toggle("studio-view-hidden", view.id !== viewId);
-        });
-
-        // The home dashboard may use separate hero/tool elements
-        const isHome = viewId === "create";
-
-        if (hero) {
-            hero.classList.toggle("studio-view-hidden", !isHome);
-        }
-
-        if (toolsGrid) {
-            toolsGrid.classList.toggle("studio-view-hidden", !isHome);
-        }
-
-        // If the requested section doesn't exist, show a clear message
-        if (!target && !isHome) {
+        if (!target || !viewIds.includes(viewId)) {
             console.warn("Dashboard section not found:", viewId);
             return;
         }
 
-        // Update sidebar active state
+        views.forEach(view => {
+            view.classList.toggle(
+                "studio-view-hidden",
+                view.id !== viewId
+            );
+        });
+
+        if (hero) {
+            hero.classList.toggle(
+                "studio-view-hidden",
+                viewId !== "create"
+            );
+        }
+
         document.querySelectorAll(".menu-item").forEach(link => {
-            const linkTarget = (link.getAttribute("href") || "").replace("#", "");
-            link.classList.toggle("active", linkTarget === viewId);
+            const linkTarget = (link.getAttribute("href") || "")
+                .replace("#", "");
+
+            const activeTarget =
+                viewId === "create" ? "home" : viewId;
+
+            link.classList.toggle(
+                "active",
+                linkTarget === activeTarget
+            );
         });
 
         sidebar?.classList.remove("open");
@@ -81,43 +99,84 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Sidebar navigation
+    // Sidebar links
     document.querySelectorAll(".menu-item").forEach(link => {
         link.addEventListener("click", event => {
             const href = link.getAttribute("href");
 
             if (!href || !href.startsWith("#")) return;
 
-            const viewId = href.substring(1);
-
-            if (viewIds.includes(viewId)) {
-                event.preventDefault();
-                showView(viewId);
-            }
-
+            event.preventDefault();
+            showView(href.substring(1));
         });
     });
 
-    // Open the correct section when the page loads with a hash
-    const initialView = window.location.hash.replace("#", "");
-    showView(viewIds.includes(initialView) ? initialView : "create", false);
+    // Internal links and tool-card links
+    document.addEventListener("click", event => {
+        const link = event.target.closest('a[href^="#"]');
 
-    // Mobile menu
+        if (!link || link.classList.contains("menu-item")) return;
+
+        const id = link.getAttribute("href").substring(1);
+
+        if (
+            viewIds.includes(id) ||
+            id === "home" ||
+            id === "smart-montage"
+        ) {
+            event.preventDefault();
+            showView(id);
+        }
+    });
+
+    // Initial view
+    const initialHash = window.location.hash.replace("#", "");
+
+    showView(
+        initialHash || "home",
+        false
+    );
+
+    // Browser back / forward
+    window.addEventListener("popstate", () => {
+        const id = window.location.hash.replace("#", "");
+        showView(id || "home", false);
+    });
+
+    // Mobile sidebar
     menuToggle?.addEventListener("click", () => {
         sidebar?.classList.toggle("open");
     });
 
+    // Close sidebar after clicking outside
+    document.addEventListener("click", event => {
+        if (
+            sidebar &&
+            menuToggle &&
+            sidebar.classList.contains("open") &&
+            !sidebar.contains(event.target) &&
+            !menuToggle.contains(event.target)
+        ) {
+            sidebar.classList.remove("open");
+        }
+    });
+
     // =====================================
-    // TOOL CARDS NAVIGATION
+    // TOOL BUTTONS
     // =====================================
 
     const toolDestinations = {
         text: "text-to-video",
         editor: "editor",
-        audio: "audio"
+        audio: "audio",
+        voice: "audio",
+        music: "audio",
+        trim: "trim-editor",
+        merge: "mergeStudio",
+        montage: "editor"
     };
 
-    document.querySelectorAll(".tool-btn[data-tool]").forEach(button => {
+    document.querySelectorAll("[data-tool]").forEach(button => {
         button.addEventListener("click", () => {
             const tool = button.dataset.tool;
             const destination = toolDestinations[tool];
@@ -129,8 +188,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (tool === "image") {
                 alert("أداة تحريك الصور ما زالت قيد التطوير.");
-            } else if (tool === "voice" || tool === "music") {
-                showView("audio");
             }
         });
     });
@@ -157,13 +214,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // FILE UPLOAD
     // =====================================
 
+    chooseMedia?.addEventListener("click", () => {
+        mediaInput?.click();
+    });
+
     mediaInput?.addEventListener("change", event => {
         addFiles(Array.from(event.target.files || []));
         mediaInput.value = "";
     });
 
     document.getElementById("addMoreClips")
-        ?.addEventListener("click", () => mediaInput?.click());
+        ?.addEventListener("click", () => {
+            mediaInput?.click();
+        });
 
     function addFiles(files) {
         const validFiles = files.filter(file =>
@@ -176,22 +239,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        if (fileList) {
-            fileList.innerHTML = "";
-        }
-
         validFiles.forEach(file => {
-            if (fileList) {
-                const item = document.createElement("div");
-                item.textContent = "✓ " + file.name;
-                fileList.appendChild(item);
-            }
+            addFileToLibrary(file);
 
             if (file.type.startsWith("video/")) {
                 const clip = {
-                    id: crypto.randomUUID
-                        ? crypto.randomUUID()
-                        : String(Date.now() + Math.random()),
+                    id: createId(),
                     file,
                     url: URL.createObjectURL(file),
                     duration: 0
@@ -200,7 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 clips.push(clip);
                 readDuration(clip);
 
-            } else if (!clips.length) {
+            } else {
                 showImage(file);
             }
         });
@@ -210,6 +263,39 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         renderTimeline();
+    }
+
+    function createId() {
+        if (
+            window.crypto &&
+            typeof window.crypto.randomUUID === "function"
+        ) {
+            return window.crypto.randomUUID();
+        }
+
+        return String(Date.now()) +
+            String(Math.random()).slice(2);
+    }
+
+    function addFileToLibrary(file) {
+        if (!fileList) return;
+
+        const empty = fileList.querySelector(".empty-message");
+        empty?.remove();
+
+        const item = document.createElement("div");
+        item.className = "media-file-item";
+
+        const name = document.createElement("span");
+        name.textContent = "✓ " + file.name;
+
+        const type = document.createElement("small");
+        type.textContent = file.type.startsWith("video/")
+            ? "VIDEO"
+            : "IMAGE";
+
+        item.append(name, type);
+        fileList.appendChild(item);
     }
 
     // =====================================
@@ -256,8 +342,13 @@ document.addEventListener("DOMContentLoaded", () => {
             previewScreen.appendChild(img);
         }
 
-        if (mediaInfo) mediaInfo.textContent = file.name;
-        if (playBtn) playBtn.textContent = "▧ صورة";
+        if (mediaInfo) {
+            mediaInfo.textContent = file.name;
+        }
+
+        if (playBtn) {
+            playBtn.textContent = "▧ صورة";
+        }
     }
 
     // =====================================
@@ -299,14 +390,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
         previewScreen.appendChild(previewVideo);
 
-        if (mediaInfo) mediaInfo.textContent = clip.file.name;
-        if (playBtn) playBtn.textContent = "▶ تشغيل";
+        if (mediaInfo) {
+            mediaInfo.textContent = clip.file.name;
+        }
+
+        if (playBtn) {
+            playBtn.textContent = "▶ تشغيل";
+        }
 
         previewVideo.addEventListener("ended", playNextClip);
 
         if (autoplay) {
-            previewVideo.play().catch(() => {
-                if (playBtn) playBtn.textContent = "▶ تشغيل";
+            previewVideo.play().then(() => {
+                if (playBtn) {
+                    playBtn.textContent = "❚❚ إيقاف";
+                }
+            }).catch(() => {
+                if (playBtn) {
+                    playBtn.textContent = "▶ تشغيل";
+                }
             });
         }
 
@@ -407,7 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (clipCounter) {
-            clipCounter.textContent = clips.length + " مقطع";
+            clipCounter.textContent = clips.length;
         }
 
         const total = clips.reduce(
@@ -450,7 +552,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const index = clips.findIndex(item => item.id === id);
         const newIndex = index + direction;
 
-        if (index < 0 || newIndex < 0 || newIndex >= clips.length) {
+        if (
+            index < 0 ||
+            newIndex < 0 ||
+            newIndex >= clips.length
+        ) {
             return;
         }
 
@@ -472,6 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
         URL.revokeObjectURL(clips[index].url);
 
         const wasSelected = selectedId === id;
+
         clips.splice(index, 1);
 
         if (wasSelected) {
@@ -483,17 +590,32 @@ document.addEventListener("DOMContentLoaded", () => {
                     clips[Math.min(index, clips.length - 1)].id
                 );
             } else {
-                if (previewScreen) {
-                    previewScreen.innerHTML =
-                        '<span class="play-icon">▶</span><p>معاينة الفيديو</p>';
-                }
-
-                if (mediaInfo) mediaInfo.textContent = "لا يوجد ملف محدد";
-                if (playBtn) playBtn.textContent = "▶ تشغيل";
+                resetPreview();
             }
         }
 
         renderTimeline();
+    }
+
+    // =====================================
+    // RESET PREVIEW
+    // =====================================
+
+    function resetPreview() {
+        stopPreview();
+
+        if (previewScreen) {
+            previewScreen.innerHTML =
+                '<div class="preview-placeholder"><span>▶</span><p>اختار ملف باش تشوف المعاينة</p></div>';
+        }
+
+        if (mediaInfo) {
+            mediaInfo.textContent = "لا يوجد ملف محدد";
+        }
+
+        if (playBtn) {
+            playBtn.textContent = "▶ تشغيل / إيقاف";
+        }
     }
 
     // =====================================
@@ -508,23 +630,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            stopPreview();
-
             clips.forEach(clip => URL.revokeObjectURL(clip.url));
 
             clips = [];
             selectedId = null;
 
-            if (fileList) fileList.innerHTML = "";
-
-            if (previewScreen) {
-                previewScreen.innerHTML =
-                    '<span class="play-icon">▶</span><p>معاينة الفيديو</p>';
+            if (fileList) {
+                fileList.innerHTML =
+                    '<p class="empty-message">مازال ما ضفتي حتى ملف.</p>';
             }
 
-            if (mediaInfo) mediaInfo.textContent = "لا يوجد ملف محدد";
-            if (playBtn) playBtn.textContent = "▶ تشغيل";
-
+            resetPreview();
             renderTimeline();
         });
 
@@ -533,7 +649,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // =====================================
 
     function formatTime(seconds) {
-        if (!Number.isFinite(seconds)) return "00:00";
+        if (!Number.isFinite(seconds) || seconds < 0) {
+            return "00:00";
+        }
 
         const minutes = Math.floor(seconds / 60);
         const remaining = Math.floor(seconds % 60);
@@ -547,20 +665,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // DRAG AND DROP
     // =====================================
 
-    const uploadArea = document.getElementById("uploadArea");
-
     uploadArea?.addEventListener("dragover", event => {
         event.preventDefault();
-        uploadArea.style.borderColor = "#f4d58a";
+        uploadArea.classList.add("drag-active");
     });
 
     uploadArea?.addEventListener("dragleave", () => {
-        uploadArea.style.borderColor = "";
+        uploadArea.classList.remove("drag-active");
     });
 
     uploadArea?.addEventListener("drop", event => {
         event.preventDefault();
-        uploadArea.style.borderColor = "";
+        uploadArea.classList.remove("drag-active");
 
         addFiles(Array.from(event.dataTransfer.files || []));
     });
@@ -573,5 +689,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     console.log("AI VIDEO STUDIO PRO EDITOR READY!");
     console.log("DASHBOARD NAVIGATION READY!");
-    console.log("AUTO MONTAGE CONNECTION READY!");
+    console.log("TIMELINE READY!");
+
 });
