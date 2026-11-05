@@ -619,6 +619,23 @@ function stopMicrophoneWaveform() {
             });
 
             recorder.start();
+           micAudioContext = new AudioContext();
+
+if (micAudioContext.state === "suspended") {
+    await micAudioContext.resume();
+}
+
+micAnalyser = micAudioContext.createAnalyser();
+micAnalyser.fftSize = 2048;
+micAnalyser.smoothingTimeConstant = 0.75;
+
+const micSource = micAudioContext.createMediaStreamSource(
+    microphoneStream
+);
+
+micSource.connect(micAnalyser);
+
+drawMicrophoneWaveform();
 
             recordingStartedAt = Date.now();
 
