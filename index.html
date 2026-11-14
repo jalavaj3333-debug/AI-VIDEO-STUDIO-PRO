@@ -251,6 +251,7 @@
   <aside>
     <a href="#home">🏠 الرئيسية</a>
     <a href="#textVideo">🎥 Text to Video</a>
+    <a href="#mergeStudio">🧩 دمج الفيديوهات</a>
     <a href="#audioStudio">🎙️ Audio Studio</a>
     <a href="#exportSection">📥 التصدير</a>
   </aside>
@@ -263,6 +264,23 @@
       <p class="muted">
         حول النصوص إلى مشاهد، سجل صوتك، أضف الموسيقى، وصدر الفيديو.
       </p>
+    </section>
+
+
+    <!-- VIDEO MERGE STUDIO -->
+    <section id="mergeStudio">
+      <h2>🧩 Video Merge Studio</h2>
+      <p class="muted">اختار جوج فيديوهات أو أكثر، رتبهم، ومن بعد دمجهم في فيديو واحد.</p>
+      <label for="mergeInput">اختيار الفيديوهات:</label>
+      <input id="mergeInput" type="file" accept="video/*" multiple>
+      <div id="mergeFileList" class="scene-card" aria-live="polite">مازال ما اخترتي حتى فيديو.</div>
+      <div class="button-row">
+        <button id="loadMergeFFmpeg" type="button">⚙️ تحميل محرك الدمج</button>
+        <button id="exportMerge" type="button" disabled>🎬 دمج وتصدير الفيديو</button>
+      </div>
+      <progress id="mergeProgress" value="0" max="100"></progress>
+      <p id="mergeStatus" class="status" aria-live="polite">اختار الفيديوهات أولا.</p>
+      <a id="mergeDownload" class="download" hidden download="AI-VIDEO-MERGED.mp4">⬇ تحميل الفيديو المدمج</a>
     </section>
 
     <!-- TEXT TO VIDEO -->
@@ -547,7 +565,8 @@
 
 <!-- Scripts: حافظ على ترتيب التحميل -->
 <script src="script.js"></script>
-<script src="ffmpeg-editor.js"></script>
+<script type="module" src="ffmpeg-editor.js"></script>
+<script type="module" src="merge-editor.js"></script>
 <script src="audio-editor.js"></script>
 <script src="text-to-video.js"></script>
 
