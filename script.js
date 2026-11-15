@@ -61,17 +61,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         views.forEach(view => {
-            view.classList.toggle(
-                "studio-view-hidden",
-                view.id !== viewId
-            );
+            const isActive = view.id === viewId;
+            view.classList.toggle("studio-view-hidden", !isActive);
+            view.hidden = !isActive;
         });
 
         if (hero) {
-            hero.classList.toggle(
-                "studio-view-hidden",
-                viewId !== "create"
-            );
+            const isHome = viewId === "create";
+            hero.classList.toggle("studio-view-hidden", !isHome);
+            hero.hidden = !isHome;
         }
 
         document.querySelectorAll(".menu-item").forEach(link => {
