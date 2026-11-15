@@ -88,7 +88,10 @@ document.addEventListener("DOMContentLoaded", () => {
         sidebar?.classList.remove("open");
 
         if (updateHash) {
-            history.replaceState(null, "", "#" + viewId);
+            const nextHash = "#" + viewId;
+            if (window.location.hash !== nextHash) {
+                history.pushState(null, "", nextHash);
+            }
         }
 
         window.scrollTo({
@@ -171,7 +174,8 @@ document.addEventListener("DOMContentLoaded", () => {
         music: "audio",
         trim: "trim-editor",
         merge: "mergeStudio",
-        montage: "editor"
+        montage: "editor",
+        projects: "projects"
     };
 
     document.querySelectorAll("[data-tool]").forEach(button => {
