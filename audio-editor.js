@@ -29,8 +29,31 @@
     const micWaveform = $("micWaveform");
     const recordedPreview = $("recordedVoicePreview");
 
+    const originalVolume = $("originalVolume");
     const musicVolume = $("musicVolume");
     const voiceVolume = $("voiceVolume");
+
+    // Keep the visible percentage labels synchronized with the sliders.
+    [
+        [originalVolume, $("originalVolumeValue")],
+        [musicVolume, $("musicVolumeValue")],
+        [voiceVolume, $("voiceVolumeValue")]
+    ].forEach(([slider, output]) => {
+        if (!slider || !output) return;
+        const update = () => {
+            output.textContent = `${slider.value}%`;
+        };
+        slider.addEventListener("input", update);
+        update();
+    });
+
+    // Audio mixing/export is not connected to a render pipeline yet.
+    const exportAudioMixButton = $("exportAudioMix");
+    if (exportAudioMixButton) {
+        exportAudioMixButton.addEventListener("click", () => {
+            setAudioStatus("تركيب الصوت والتصدير النهائي مازال قيد التطوير. اختيار الملفات والتسجيل والمعاينة خدامين حالياً.");
+        });
+    }
 
     let selectedVideo = null;
     let selectedMusic = null;
